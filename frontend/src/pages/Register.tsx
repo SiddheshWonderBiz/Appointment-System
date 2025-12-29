@@ -37,6 +37,7 @@ export default function Register() {
       });
 
       alert("Registration successful");
+      navigate("/login");
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed");
     }

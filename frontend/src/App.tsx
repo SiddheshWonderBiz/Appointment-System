@@ -1,15 +1,11 @@
-
-import './App.css'
+import AppRouter from "./router/AppRouter";
 
 function App() {
 
+
   return (
-    <>
-      <div>
-        <h1 className='text-blue-600 text-3xl'> Hello </h1>
-      </div>
-    </>
-  )
+    <AppRouter />
+  );
 }
 
-export default App
+export default App;

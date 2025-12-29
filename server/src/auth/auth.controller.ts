@@ -1,8 +1,10 @@
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { max } from 'class-validator';
+import { CurrentUser } from './decorator/current-user.decorator';
+import { JwtAuthGuard } from './guard/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -22,6 +24,7 @@ export class AuthController {
     res.cookie('jwt', access_token, {
       httpOnly: true,
       secure: false,
+      sameSite : 'lax',
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -37,6 +40,13 @@ export class AuthController {
     return {
         message: 'Logout successful'
     }
+  }
+
+  //Current User
+  @UseGuards(JwtAuthGuard)
+  @Post('me')
+  async me(@CurrentUser() user: any) {
+    return user;
   }
 
   

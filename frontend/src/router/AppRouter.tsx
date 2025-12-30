@@ -5,6 +5,8 @@ import Unauthorized from "../pages/Unauthorized";
 import ProtectedRoute from "../routes/ProtectedRoute";
 import ConsultantDashboard from "../pages/ConsultantDashboard";
 import ClientDashboard from "../pages/client/ClientDashboard";
+import CreateAppointment from "../pages/client/CreateAppointment";
+import MyAppointments from "../pages/client/MyAppointments";
 
 
 export default function AppRouter() {
@@ -17,6 +19,8 @@ export default function AppRouter() {
             // Protected Routes
             <Route element={<ProtectedRoute allowedRoles={['CLIENT']} />} >
                 <Route path="/client" element={<ClientDashboard />} />
+                <Route path="/create-appointment" element={<CreateAppointment />} />
+                <Route path="/my-appointments" element={<MyAppointments />} />
             </Route>    
             <Route element={<ProtectedRoute allowedRoles={['CONSULTANT']} />} >
                 <Route path="/consultant" element={<ConsultantDashboard />} />

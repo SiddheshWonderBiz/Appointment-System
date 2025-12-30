@@ -4,6 +4,8 @@ export class CreateAppointmentDto {
     @IsInt()
     consultantId: number;
 
+    
+
     @IsDateString()
     startAt: string;
 

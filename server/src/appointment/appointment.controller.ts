@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -22,7 +23,7 @@ export class AppointmentController {
   @UseGuards(JwtAuthGuard)
   @Post('create')
   async createAppointment(
-    @CurrentUser() user: { id: number; role: Role },
+    @CurrentUser() user: { id: number; role: Role , name: string },
     @Body() dto: CreateAppointmentDto,
   ) {
     return this.appointmentService.createAppointment(dto, user);
@@ -82,5 +83,15 @@ export class AppointmentController {
     @Param('id') appointmentId: string,
   ) {
     return this.appointmentService.completeAppointment(+appointmentId, user);
+  }
+
+  //availbility 
+  @UseGuards(JwtAuthGuard)
+  @Get('availability/:consultantId/')
+  async getAvailability(
+    @Param('consultantId') consultantId: string,
+    @Query('date') date: string,
+  ) {
+    return this.appointmentService.getAvalibility(+consultantId, date);
   }
 }

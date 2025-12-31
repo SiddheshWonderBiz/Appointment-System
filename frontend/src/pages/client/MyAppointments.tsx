@@ -1,124 +1,97 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import Header from "../../common/Header";
+import AppointmentCard from "./../../common/AppointmentCard ";
+import { useNavigate } from "react-router-dom";
 
-type Appointment = {
+export type Appointment = {
   id: number;
-  startAt: string; // UTC
-  endAt: string;   // UTC
+  startAt: string;
+  endAt: string;
   purpose?: string;
-  status: "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED";
+  status: "PENDING" | "CONFIRMED" | "REJECTED" | "CANCELLED" | "COMPLETED";
   consultant: {
+    id: number;
     name: string;
-    specialty?: string;
+    email?: string;
   };
 };
 
-const formatDate = (utc: string) => {
-  return new Date(utc).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const formatTime = (utc: string) => {
-  return new Date(utc).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
-
 const MyAppointments = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+  const [previous, setPrevious] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const navigate = useNavigate();
   useEffect(() => {
-    api
-      .get("/appointment/my")
-      .then((res) => setAppointments(res.data))
+    Promise.all([
+      api.get("/appointment/me"), // upcoming (scheduled + pending)
+      api.get("/appointment/me/history"), // cancelled + rejected + completed
+    ])
+      .then(([upRes, prevRes]) => {
+        setUpcoming(upRes.data);
+        setPrevious(prevRes.data);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
-    return <div className="text-center py-10">Loading appointments...</div>;
-  }
-
-  if (appointments.length === 0) {
     return (
-      <div className="text-center py-10 text-gray-500">
-        No appointments booked yet
+      <div className="flex justify-center py-16 text-gray-500">
+        Loading appointments...
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-4 rounded shadow">
-      <h2 className="font-semibold mb-4">My Appointments</h2>
+    <>
+      <Header />
 
-      <div className="space-y-3">
-        {appointments.map((appt) => {
-          const isPast = new Date(appt.endAt) < new Date();
-
-          return (
-            <div
-              key={appt.id}
-              className={`border rounded p-3 flex justify-between items-center ${
-                isPast ? "bg-gray-50 text-gray-500" : "bg-emerald-50"
-              }`}
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+        <section>
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
             >
-              <div>
-                 {/* Consultant Name & Specialty */}
-                <p className="font-medium">
-                  {appt.consultant.name}{" "}
-                  {appt.consultant.specialty &&
-                    `(${appt.consultant.specialty})`}
-                </p>
+              ← 
+            </button>
 
-                {/* Date & Time */}
-                <p className="text-sm">
-                  {formatDate(appt.startAt)} •{" "}
-                  {formatTime(appt.startAt)} – {formatTime(appt.endAt)}
-                </p>
+            <h2 className="text-2xl font-semibold text-gray-800">
+              Upcoming Appointments
+            </h2>
+          </div>
 
-                {/* Purpose */}
-                {appt.purpose && (
-                  <p className="text-xs text-gray-600 mt-1">
-                    Purpose: {appt.purpose}
-                  </p>
-                )}
-
-                {/* Status */}
-                <p className="text-xs mt-1">
-                  Status:{" "}
-                  <span
-                    className={`px-1 rounded ${
-                      appt.status === "CONFIRMED"
-                        ? "bg-emerald-500 text-white"
-                        : appt.status === "PENDING"
-                        ? "bg-yellow-400 text-white"
-                        : "bg-red-500 text-white"
-                                    
-                    }`}
-                  >
-                    {appt.status}
-                  </span>
-                </p>
-              </div>
-
-              {/* Status Badge */}
-              <span
-                className={`text-xs px-2 py-1 rounded ${
-                  isPast ? "bg-gray-200" : "bg-emerald-500 text-white"
-                }`}
-              >
-                {isPast ? "Completed" : "Upcoming"}
-              </span>
+          {upcoming.length === 0 ? (
+            <p className="text-gray-500">No upcoming appointments</p>
+          ) : (
+            <div className="space-y-4">
+              {upcoming.map((appt) => (
+                <AppointmentCard key={appt.id} appt={appt} label="Upcoming" />
+              ))}
             </div>
-          );
-        })}
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Previous Appointments</h2>
+
+          {previous.length === 0 ? (
+            <p className="text-gray-500">No previous appointments</p>
+          ) : (
+            <div className="space-y-4">
+              {previous.map((appt) => (
+                <AppointmentCard
+                  key={appt.id}
+                  appt={appt}
+                  label="Completed"
+                  muted
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
-    </div>
+    </>
   );
 };
 

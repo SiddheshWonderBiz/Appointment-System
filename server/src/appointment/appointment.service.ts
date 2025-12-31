@@ -14,7 +14,7 @@ export class AppointmentService {
 
   async createAppointment(
     dto: CreateAppointmentDto,
-    user: { id: number; role: Role , name : string},
+    user: { id: number; role: Role; name: string },
   ) {
     if (user.role !== Role.CLIENT) {
       throw new ForbiddenException('Only clients can create appointments');
@@ -85,11 +85,52 @@ export class AppointmentService {
     const appointments = await this.prismaService.appointment.findMany({
       where: {
         clientId: user.id,
+        status: {
+          in: [Status.PENDING, Status.SCHEDULED],
+        },
       },
       orderBy: {
         startAt: 'asc',
       },
+      include: {
+        consultant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
+
+    return appointments;
+  }
+  async myPrevAppointments(user: { id: number; role: Role }) {
+    if (user.role !== Role.CLIENT) {
+      throw new ForbiddenException('Only clients can view their appointments');
+    }
+
+    const appointments = await this.prismaService.appointment.findMany({
+      where: {
+        clientId: user.id,
+        status: {
+          in: [Status.COMPLETED, Status.CANCELED, Status.REJECTED],
+        },
+      },
+      orderBy: {
+        startAt: 'asc',
+      },
+      include: {
+        consultant: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
     return appointments;
   }
 

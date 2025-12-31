@@ -36,6 +36,13 @@ export class AppointmentController {
     return this.appointmentService.myAppointments(user);
   }
 
+  //get my prev appointments
+  @UseGuards(JwtAuthGuard)
+  @Get('me/history')
+  async myPreviousAppointments(@CurrentUser() user: { id: number; role: Role }) {
+    return this.appointmentService.myPrevAppointments(user);
+  }
+
   //get consultant appointments
   @UseGuards(JwtAuthGuard)
   @Get('consultant')

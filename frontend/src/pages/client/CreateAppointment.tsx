@@ -56,11 +56,21 @@ const CreateAppointment = () => {
       });
   }, [consultantId, date]);
 
+  const isSunday = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.getDay() === 0;
+  }
   const submit = async () => {
+    if (isSunday(date)) {
+      alert("Appointments cannot be booked on Sundays. Please select another date.");
+      return;
+    }
+    
     if (!consultantId || !date || !selectedSlot) {
       alert("Please select consultant, date and time slot");
       return;
     }
+    
 
     try {
       await api.post("/appointment/create", {

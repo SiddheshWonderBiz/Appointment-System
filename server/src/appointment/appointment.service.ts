@@ -148,6 +148,42 @@ export class AppointmentService {
       orderBy: {
         startAt: 'asc',
       },
+      include:{
+        client:{
+          select:{
+            id:true,
+            name : true,
+            email: true
+          }
+        }
+      }
+    });
+    return appointments;
+  }
+
+  async consultantPrevAppointments(user: { id: number; role: Role }) {
+    if (user.role !== Role.CONSULTANT) {
+      throw new ForbiddenException(
+        'Only consultants can view their appointments',
+      );
+    }
+    const appointments = await this.prismaService.appointment.findMany({
+      where: {
+        consultantId: user.id,
+        status: { in: [Status.CANCELED, Status.COMPLETED , Status.REJECTED] },
+      },
+      orderBy: {
+        startAt: 'asc',
+      },
+      include:{
+        client:{
+          select:{
+            id:true,
+            name : true,
+            email: true
+          }
+        }
+      }
     });
     return appointments;
   }

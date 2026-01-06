@@ -52,6 +52,14 @@ export class AppointmentController {
     return this.appointmentService.consultantAppointments(user);
   }
 
+    @UseGuards(JwtAuthGuard)
+  @Get('consultant/history')
+  async consultantPrevAppointments(
+    @CurrentUser() user: { id: number; role: Role },
+  ) {
+    return this.appointmentService.consultantPrevAppointments(user);
+  }
+
   //accept appointment
   @UseGuards(JwtAuthGuard)
   @Patch('accept/:id')

@@ -3,10 +3,13 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Unauthorized from "../pages/Unauthorized";
 import ProtectedRoute from "../routes/ProtectedRoute";
-import ConsultantDashboard from "../pages/ConsultantDashboard";
+import ConsultantDashboard from "../pages/consultant/ConsultantDashboard";
 import ClientDashboard from "../pages/client/ClientDashboard";
 import CreateAppointment from "../pages/client/CreateAppointment";
 import MyAppointments from "../pages/client/MyAppointments";
+import PendingAppointments from "../pages/consultant/PendingAppointments";
+import ScheduledAppointments from "../pages/consultant/ScheduledAppointments";
+import AppointmentHistory from "../pages/consultant/AppointmentHistory";
 
 
 export default function AppRouter() {
@@ -24,6 +27,11 @@ export default function AppRouter() {
             </Route>    
             <Route element={<ProtectedRoute allowedRoles={['CONSULTANT']} />} >
                 <Route path="/consultant" element={<ConsultantDashboard />} />
+                <Route path ="/consultant/appointments/pending" element = { <PendingAppointments/>} />
+                <Route path="/consultant/appointments/scheduled" element = {<ScheduledAppointments/>} />
+                <Route path="/consultant/appointments/history" element = {<AppointmentHistory/>} />
+
+
             </Route>
         </Routes>
         </BrowserRouter>

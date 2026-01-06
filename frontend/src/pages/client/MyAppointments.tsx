@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Header from "../../common/Header";
-import AppointmentCard from "./../../common/AppointmentCard ";
+import AppointmentCard from "../../common/AppointmentCard ";
 import { useNavigate } from "react-router-dom";
 
 export type Appointment = {
@@ -22,10 +22,11 @@ const MyAppointments = () => {
   const [previous, setPrevious] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
   useEffect(() => {
     Promise.all([
-      api.get("/appointment/me"), // upcoming (scheduled + pending)
-      api.get("/appointment/me/history"), // cancelled + rejected + completed
+      api.get("/appointment/me"),
+      api.get("/appointment/me/history"),
     ])
       .then(([upRes, prevRes]) => {
         setUpcoming(upRes.data);
@@ -33,6 +34,21 @@ const MyAppointments = () => {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleCancel = async (appt: Appointment) => {
+    try {
+      await api.patch(`/appointment/cancel/${appt.id}`);
+
+      // Remove from upcoming
+      setUpcoming((prev) => prev.filter((a) => a.id !== appt.id));
+
+      // Add to previous with CANCELLED status
+      setPrevious((prev) => [{ ...appt, status: "CANCELLED" }, ...prev]);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to cancel appointment");
+    }
+  };
 
   if (loading) {
     return (
@@ -45,20 +61,17 @@ const MyAppointments = () => {
   return (
     <>
       <Header />
-
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+        {/* UPCOMING */}
         <section>
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => navigate(-1)}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
             >
-              ← 
+              ←
             </button>
-
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Upcoming Appointments
-            </h2>
+            <h2 className="text-2xl font-semibold">Upcoming Appointments</h2>
           </div>
 
           {upcoming.length === 0 ? (
@@ -66,12 +79,18 @@ const MyAppointments = () => {
           ) : (
             <div className="space-y-4">
               {upcoming.map((appt) => (
-                <AppointmentCard key={appt.id} appt={appt} label="Upcoming" />
+                <AppointmentCard
+                  key={appt.id}
+                  appt={appt}
+                  label="Upcoming"
+                  onCancel={handleCancel}
+                />
               ))}
             </div>
           )}
         </section>
 
+        {/* PREVIOUS */}
         <section>
           <h2 className="text-2xl font-semibold mb-4">Previous Appointments</h2>
 

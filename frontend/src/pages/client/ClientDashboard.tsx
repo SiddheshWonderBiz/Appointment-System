@@ -67,7 +67,7 @@ const ClientDashboard = () => {
             </div>
           </div>
 
-          {/* RIGHT IMAGE - LARGE & RESPONSIVE */}
+          {/* RIGHT IMAGE  */}
           <div className="w-full lg:w-1/2 flex justify-center lg:justify-end">
             <img
               src={client}

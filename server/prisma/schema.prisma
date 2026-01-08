@@ -55,7 +55,7 @@ enum Role{
 enum Status{
   SCHEDULED
   COMPLETED
-  CANCELED
+  CANCELLED
   PENDING
   REJECTED
 }

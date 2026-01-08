@@ -82,7 +82,7 @@ const CreateAppointment = () => {
         purpose,
       });
 
-      toast.success("Appointment created successfully");
+      toast.success("Appointment created successfully,Confirmation email sent to consultant");
       setDate("");
       setSlots([]);
       setSelectedSlot(null);

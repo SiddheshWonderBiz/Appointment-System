@@ -6,11 +6,48 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { Role, Status } from '@prisma/client';
-import { start } from 'repl';
+
+import { MailService } from 'src/mail/mail.service';
+import {
+  appointmentCreatedHtml,
+  appointmentStatusHtml,
+} from 'src/mail/mail.html-templates';
 
 @Injectable()
 export class AppointmentService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private mailService: MailService,
+  ) {}
+
+  /* ------------------ HELPERS ------------------ */
+
+  private formatDateTime(date: Date) {
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+  }
+
+  private mapStatusForEmail(status: Status) {
+    switch (status) {
+      case Status.SCHEDULED:
+        return 'ACCEPTED';
+      case Status.REJECTED:
+        return 'REJECTED';
+      case Status.CANCELLED:
+        return 'CANCELLED';
+      case Status.COMPLETED:
+        return 'COMPLETED';
+      default:
+        return null;
+    }
+  }
+
+  /* ------------------ CREATE ------------------ */
 
   async createAppointment(
     dto: CreateAppointmentDto,
@@ -22,44 +59,38 @@ export class AppointmentService {
 
     const startAt = new Date(dto.startAt);
     const endAt = new Date(dto.endAt);
+
     if (startAt >= endAt) {
       throw new ForbiddenException('Invalid appointment time range');
     }
 
-    const day = startAt.getDay();
-    if (day === 0) {
+    if (startAt.getDay() === 0) {
       throw new ForbiddenException(
         'Appointments cannot be scheduled on Sundays',
       );
     }
 
-    const startHour = startAt.getHours();
-    const endHour = endAt.getHours();
-
-    if (startHour < 10 || endHour > 19) {
+    if (
+      startAt.getHours() < 10 ||
+      endAt.getHours() > 19 ||
+      startAt.getMinutes() !== 0 ||
+      endAt.getMinutes() !== 0
+    ) {
       throw new ForbiddenException(
-        'Appointments must be between 10 AM and 7 PM',
-      );
-    }
-    if (startAt.getMinutes() !== 0 || endAt.getMinutes() !== 0) {
-      throw new ForbiddenException(
-        'Appointments must start and end on full hours',
+        'Appointments must be between 10 AM and 7 PM (full hours only)',
       );
     }
 
     const conflict = await this.prismaService.appointment.findFirst({
       where: {
         consultantId: dto.consultantId,
-        status: {
-          in: [Status.PENDING, Status.SCHEDULED],
-        },
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
         AND: [{ startAt: { lt: endAt } }, { endAt: { gt: startAt } }],
       },
     });
+
     if (conflict) {
-      throw new ForbiddenException(
-        'The consultant is not available during the selected time slot',
-      );
+      throw new ForbiddenException('Consultant is not available for this slot');
     }
 
     const appointment = await this.prismaService.appointment.create({
@@ -71,300 +102,286 @@ export class AppointmentService {
         purpose: dto.purpose,
         status: Status.PENDING,
       },
+      include: {
+        consultant: true,
+        client: true,
+      },
+    });
+
+    const { date, time } = this.formatDateTime(startAt);
+
+    const mail = appointmentCreatedHtml(appointment.client.name, date, time);
+
+    await this.mailService.sendMail({
+      to: appointment.consultant.email,
+      subject: mail.subject,
+      html: mail.html,
     });
 
     return appointment;
   }
 
-  //get looged in user's appointments
+  /* ------------------ CLIENT ------------------ */
+
   async myAppointments(user: { id: number; role: Role }) {
     if (user.role !== Role.CLIENT) {
-      throw new ForbiddenException('Only clients can view their appointments');
+      throw new ForbiddenException('Only clients can view appointments');
     }
 
-    const appointments = await this.prismaService.appointment.findMany({
+    return this.prismaService.appointment.findMany({
       where: {
         clientId: user.id,
-        status: {
-          in: [Status.PENDING, Status.SCHEDULED],
-        },
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
       },
-      orderBy: {
-        startAt: 'asc',
-      },
+      orderBy: { startAt: 'asc' },
       include: {
-        consultant: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        consultant: { select: { id: true, name: true, email: true } },
       },
     });
-
-    return appointments;
   }
+
   async myPrevAppointments(user: { id: number; role: Role }) {
     if (user.role !== Role.CLIENT) {
-      throw new ForbiddenException('Only clients can view their appointments');
+      throw new ForbiddenException('Only clients can view appointments');
     }
 
-    const appointments = await this.prismaService.appointment.findMany({
+    return this.prismaService.appointment.findMany({
       where: {
         clientId: user.id,
-        status: {
-          in: [Status.COMPLETED, Status.CANCELED, Status.REJECTED],
-        },
+        status: { in: [Status.COMPLETED, Status.CANCELLED, Status.REJECTED] },
       },
-      orderBy: {
-        startAt: 'asc',
-      },
+      orderBy: { startAt: 'asc' },
       include: {
-        consultant: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        consultant: { select: { id: true, name: true, email: true } },
       },
     });
-
-    return appointments;
   }
+
+  /* ------------------ CONSULTANT ------------------ */
 
   async consultantAppointments(user: { id: number; role: Role }) {
     if (user.role !== Role.CONSULTANT) {
-      throw new ForbiddenException(
-        'Only consultants can view their appointments',
-      );
+      throw new ForbiddenException('Only consultants can view appointments');
     }
-    const appointments = await this.prismaService.appointment.findMany({
+
+    return this.prismaService.appointment.findMany({
       where: {
         consultantId: user.id,
-        status: { in: [Status.SCHEDULED, Status.PENDING] },
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
       },
-      orderBy: {
-        startAt: 'asc',
+      orderBy: { startAt: 'asc' },
+      include: {
+        client: { select: { id: true, name: true, email: true } },
       },
-      include:{
-        client:{
-          select:{
-            id:true,
-            name : true,
-            email: true
-          }
-        }
-      }
     });
-    return appointments;
   }
 
   async consultantPrevAppointments(user: { id: number; role: Role }) {
     if (user.role !== Role.CONSULTANT) {
-      throw new ForbiddenException(
-        'Only consultants can view their appointments',
-      );
+      throw new ForbiddenException('Only consultants can view appointments');
     }
-    const appointments = await this.prismaService.appointment.findMany({
+
+    return this.prismaService.appointment.findMany({
       where: {
         consultantId: user.id,
-        status: { in: [Status.CANCELED, Status.COMPLETED , Status.REJECTED] },
+        status: { in: [Status.CANCELLED, Status.COMPLETED, Status.REJECTED] },
       },
-      orderBy: {
-        startAt: 'asc',
+      orderBy: { startAt: 'asc' },
+      include: {
+        client: { select: { id: true, name: true, email: true } },
       },
-      include:{
-        client:{
-          select:{
-            id:true,
-            name : true,
-            email: true
-          }
-        }
-      }
     });
-    return appointments;
   }
 
-  async acceptAppointment(
-    appointmentId: number,
-    user: { id: number; role: Role },
-  ) {
+  /* ------------------ STATUS ACTIONS ------------------ */
+
+  async acceptAppointment(id: number, user: { id: number; role: Role }) {
     if (user.role !== Role.CONSULTANT) {
-      throw new ForbiddenException('Only consultants can accept appointments');
+      throw new ForbiddenException();
     }
 
     const appointment = await this.prismaService.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
+      include: { client: true, consultant: true },
     });
 
-    if (!appointment) {
-      throw new NotFoundException('Appointment not found');
+    if (!appointment || appointment.consultantId !== user.id) {
+      throw new ForbiddenException();
     }
-    if (appointment.consultantId !== user.id) {
-      throw new ForbiddenException(
-        'You are not authorized to accept this appointment',
-      );
-    }
+
     if (appointment.status !== Status.PENDING) {
-      throw new ForbiddenException('Only pending appointments can be accepted');
+      throw new ForbiddenException('Only pending appointments allowed');
     }
-    const updateAppointment = await this.prismaService.appointment.update({
-      where: { id: appointmentId },
+
+    const updated = await this.prismaService.appointment.update({
+      where: { id },
       data: { status: Status.SCHEDULED },
     });
-    return updateAppointment;
+
+    const { date, time } = this.formatDateTime(appointment.startAt);
+
+    const mail = appointmentStatusHtml(
+      'ACCEPTED',
+      appointment.consultant.name,
+      date,
+      time,
+    );
+
+    await this.mailService.sendMail({
+      to: appointment.client.email,
+      subject: mail.subject,
+      html: mail.html,
+    });
+
+    return updated;
   }
 
-  //reject appointment
-  async rejectAppointment(
-    appointmentId: number,
-    user: { id: number; role: Role },
-  ) {
-    if (user.role !== Role.CONSULTANT) {
-      throw new ForbiddenException('Only consultants can reject appointments');
-    }
+  async rejectAppointment(id: number, user: { id: number; role: Role }) {
+    if (user.role !== Role.CONSULTANT) throw new ForbiddenException();
 
     const appointment = await this.prismaService.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
+      include: { client: true, consultant: true },
     });
-    if (!appointment) {
-      throw new NotFoundException('Appointment not found');
+
+    if (!appointment || appointment.consultantId !== user.id) {
+      throw new ForbiddenException();
     }
-    if (appointment.consultantId !== user.id) {
-      throw new ForbiddenException(
-        'You are not authorized to reject this appointment',
-      );
-    }
+
     if (appointment.status !== Status.PENDING) {
-      throw new ForbiddenException('Only pending appointments can be rejected');
+      throw new ForbiddenException();
     }
-    const updateAppointment = await this.prismaService.appointment.update({
-      where: { id: appointmentId },
+
+    const updated = await this.prismaService.appointment.update({
+      where: { id },
       data: { status: Status.REJECTED },
     });
-    return updateAppointment;
+
+    const { date, time } = this.formatDateTime(appointment.startAt);
+
+    const mail = appointmentStatusHtml(
+      'REJECTED',
+      appointment.consultant.name,
+      date,
+      time,
+    );
+
+    await this.mailService.sendMail({
+      to: appointment.client.email,
+      subject: mail.subject,
+      html: mail.html,
+    });
+
+    return updated;
   }
 
-  //cancel appointment
-  async cancelAppointment(
-    appointmentId: number,
-    user: { id: number; role: Role },
-  ) {
-    if (user.role !== Role.CLIENT) {
-      throw new ForbiddenException('Only clients can cancel appointments');
-    }
+  async cancelAppointment(id: number, user: { id: number; role: Role }) {
+    if (user.role !== Role.CLIENT) throw new ForbiddenException();
+
     const appointment = await this.prismaService.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
+      include: { client: true, consultant: true },
     });
-    if (!appointment) {
-      throw new NotFoundException('Appointment not found');
+
+    if (!appointment || appointment.clientId !== user.id) {
+      throw new ForbiddenException();
     }
-    if (appointment.clientId !== user.id) {
-      throw new ForbiddenException(
-        'You are not authorized to cancel this appointment',
-      );
-    }
+
     if (
-      appointment.status !== Status.SCHEDULED &&
-      appointment.status !== Status.PENDING
+      appointment.status !== Status.PENDING &&
+      appointment.status !== Status.SCHEDULED
     ) {
-      throw new ForbiddenException(
-        'Only scheduled and pending appointments can be canceled',
-      );
+      throw new ForbiddenException('Cannot cancel this appointment');
     }
-    const updateAppointment = await this.prismaService.appointment.update({
-      where: { id: appointmentId },
-      data: { status: Status.CANCELED },
+
+    const updated = await this.prismaService.appointment.update({
+      where: { id },
+      data: { status: Status.CANCELLED },
     });
-    return updateAppointment;
+
+    const { date, time } = this.formatDateTime(appointment.startAt);
+
+    const mail = appointmentStatusHtml(
+      'CANCELLED',
+      appointment.consultant.name,
+      date,
+      time,
+    );
+
+    await this.mailService.sendMail({
+      to: appointment.client.email,
+      subject: mail.subject,
+      html: mail.html,
+    });
+
+    return updated;
   }
 
-  //complete appointment
-  async completeAppointment(
-    appointmentId: number,
-    user: { id: number; role: Role },
-  ) {
-    if (user.role !== Role.CONSULTANT) {
-      throw new ForbiddenException(
-        'Only consultants can complete appointments',
-      );
-    }
+  async completeAppointment(id: number, user: { id: number; role: Role }) {
+    if (user.role !== Role.CONSULTANT) throw new ForbiddenException();
+
     const appointment = await this.prismaService.appointment.findUnique({
-      where: { id: appointmentId },
+      where: { id },
+      include: { client: true, consultant: true },
     });
 
-    if (!appointment) {
-      throw new NotFoundException('Appointment not found');
+    if (!appointment || appointment.consultantId !== user.id) {
+      throw new ForbiddenException();
     }
 
-    if (appointment.consultantId !== user.id) {
-      throw new ForbiddenException(
-        'You are not authorized to complete this appointment',
-      );
-    }
     if (appointment.status !== Status.SCHEDULED) {
-      throw new ForbiddenException(
-        'Only scheduled appointments can be completed',
-      );
+      throw new ForbiddenException();
     }
-    const updateAppointment = await this.prismaService.appointment.update({
-      where: { id: appointmentId },
+
+    const updated = await this.prismaService.appointment.update({
+      where: { id },
       data: { status: Status.COMPLETED },
     });
-    return updateAppointment;
+
+    const { date, time } = this.formatDateTime(appointment.startAt);
+
+    const mail = appointmentStatusHtml(
+      'COMPLETED',
+      appointment.consultant.name,
+      date,
+      time,
+    );
+
+    await this.mailService.sendMail({
+      to: appointment.client.email,
+      subject: mail.subject,
+      html: mail.html,
+    });
+
+    return updated;
   }
 
-  //get Avalibility of a consultant
   async getAvalibility(consultantId: number, date: string) {
-    const day = new Date(date);
-
-    // No appointments on Sunday
+    const day = new Date(date); // No appointments on Sunday
     if (day.getDay() === 0) {
       return [];
-    }
-
-    // Slots from 10 AM to 7 PM
+    } // Slots from 10 AM to 7 PM
     const slots: Array<{ start: Date; end: Date }> = [];
-
     for (let hr = 10; hr < 19; hr++) {
       const start = new Date(date);
       start.setHours(hr, 0, 0, 0);
-
       const end = new Date(date);
       end.setHours(hr + 1, 0, 0, 0);
-
       slots.push({ start, end });
-    }
-
-    //  Fetch booked appointments
+    } // Fetch booked appointments
     const bookedAppointments = await this.prismaService.appointment.findMany({
       where: {
         consultantId,
-        status: {
-          in: [Status.PENDING, Status.SCHEDULED],
-        },
-        startAt: {
-          gte: slots[0].start,
-          lte: slots[slots.length - 1].end,
-        },
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
+        startAt: { gte: slots[0].start, lte: slots[slots.length - 1].end },
       },
-    });
-
-    //  Filter available slots (FIXED RETURN)
+    }); // Filter available slots (FIXED RETURN
     const availableSlots = slots.filter(
       (slot) =>
         !bookedAppointments.some(
           (b) => b.startAt < slot.end && b.endAt > slot.start,
         ),
-    );
-
-    //  Frontend-friendly response
-    return availableSlots.map((slot) => ({
-      start: slot.start,
-      end: slot.end,
-    }));
+    ); // Frontend-friendly response
+    return availableSlots.map((slot) => ({ start: slot.start, end: slot.end }));
   }
 }

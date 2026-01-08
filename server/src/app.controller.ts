@@ -11,10 +11,10 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get('/test')
-  async getTest() {
-    return await this.mailService.sendTestMail('siddheshwayal114@gmail.com');
-  }
+  // @Get('/test')
+  // async getTest() {
+  //   return await this.mailService.sendTestMail('siddheshwayal114@gmail.com');
+  // }
 
   
 

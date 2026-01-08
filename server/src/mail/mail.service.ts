@@ -3,13 +3,13 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
-  private transporter;
+  private transporter: nodemailer.Transporter;
 
   constructor() {
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
-      secure: false, 
+      secure: false, // STARTTLS
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -17,14 +17,22 @@ export class MailService {
     });
   }
 
-  async sendTestMail(to: string) {
-    await this.transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject: 'SMTP Test Mail',
-      text: 'SMTP is working successfully',
-    });
-
-    console.log('Test email sent to', to);
+  sendMail(options: {
+    to: string;
+    subject: string;
+    text?: string;
+    html?: string;
+  }) {
+    this.transporter
+      .sendMail({
+        from: process.env.SMTP_FROM,
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html,
+      })
+      .catch((err) => {
+        console.error('Email failed:', err.message);
+      });
   }
 }

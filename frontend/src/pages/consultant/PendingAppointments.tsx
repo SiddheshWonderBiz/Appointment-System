@@ -29,7 +29,7 @@ const PendingAppointments = () => {
       await api.patch(`/appointment/accept/${id}`);
 
       setPendingAppointments((prev) => prev.filter((appt) => appt.id !== id));
-      toast.success("Accepted appointment successfully")
+      toast.success("Accepted appointment successfully,  Status email sent to client")
     } catch (err) {
       toast.error("failed to fetch appointments");
     }
@@ -42,7 +42,7 @@ const PendingAppointments = () => {
     try {
       await api.patch(`/appointment/reject/${id}`);
       setPendingAppointments((prev) => prev.filter((appt) => appt.id !== id));
-      toast.success("Appointment rejected")
+      toast.success("Appointment rejected, Status email sent to client")
     } catch {
       toast.error("Failed to reject appointment");
     }

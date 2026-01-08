@@ -42,7 +42,7 @@ const ScheduledAppointments = () => {
 
       setAppointments((prev) => prev.filter((appt) => appt.id !== id));
 
-      toast.success("Appointments completed successfully")
+      toast.success("Appointments completed successfully, Status email sent to client")
     } catch {
       toast.error("Failed to complete appointment");
     }

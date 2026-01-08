@@ -2,6 +2,7 @@ import { useState } from "react";
 import api from "../api/axios";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
+import {toast} from "react-toastify";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -36,7 +37,7 @@ export default function Register() {
           form.role === "CONSULTANT" ? form.specialty : undefined,
       });
 
-      alert("Registration successful");
+      toast.success("Registration successful");
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed");

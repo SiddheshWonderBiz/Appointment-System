@@ -3,6 +3,7 @@ import api from "../../api/axios";
 import Header from "../../common/Header";
 import AppointmentCard from "../../common/AppointmentCard ";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export type Appointment = {
   id: number;
@@ -44,9 +45,11 @@ const MyAppointments = () => {
 
       // Add to previous with CANCELLED status
       setPrevious((prev) => [{ ...appt, status: "CANCELLED" }, ...prev]);
+
+      toast.success("Appointment is cancelled ")
     } catch (err) {
       console.error(err);
-      alert("Failed to cancel appointment");
+      toast.error("Failed to cancel appointment");
     }
   };
 

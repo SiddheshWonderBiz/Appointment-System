@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Header from "../../common/Header";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 type Appointment = {
   id: number;
@@ -40,8 +41,10 @@ const ScheduledAppointments = () => {
       await api.patch(`/appointment/complete/${id}`);
 
       setAppointments((prev) => prev.filter((appt) => appt.id !== id));
+
+      toast.success("Appointments completed successfully")
     } catch {
-      alert("Failed to complete appointment");
+      toast.error("Failed to complete appointment");
     }
   };
     if (loading) {

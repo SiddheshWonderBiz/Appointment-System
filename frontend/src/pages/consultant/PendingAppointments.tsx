@@ -2,6 +2,7 @@ import  { useEffect, useState } from "react";
 import Header from "../../common/Header";
 import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export type Appointment = {
   id: number;
@@ -28,8 +29,9 @@ const PendingAppointments = () => {
       await api.patch(`/appointment/accept/${id}`);
 
       setPendingAppointments((prev) => prev.filter((appt) => appt.id !== id));
+      toast.success("Accepted appointment successfully")
     } catch (err) {
-      alert("failed to fetch appointments");
+      toast.error("failed to fetch appointments");
     }
   };
 
@@ -40,8 +42,9 @@ const PendingAppointments = () => {
     try {
       await api.patch(`/appointment/reject/${id}`);
       setPendingAppointments((prev) => prev.filter((appt) => appt.id !== id));
+      toast.success("Appointment rejected")
     } catch {
-      alert("Failed to reject appointment");
+      toast.error("Failed to reject appointment");
     }
   };
 

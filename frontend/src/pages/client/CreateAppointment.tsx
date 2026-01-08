@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Header from "../../common/Header";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+
 
 
 type Consultant = {
@@ -62,12 +64,12 @@ const CreateAppointment = () => {
   }
   const submit = async () => {
     if (isSunday(date)) {
-      alert("Appointments cannot be booked on Sundays. Please select another date.");
+      toast.info("Appointments cannot be booked on Sundays. Please select another date.");
       return;
     }
     
     if (!consultantId || !date || !selectedSlot) {
-      alert("Please select consultant, date and time slot");
+      toast.info("Please select consultant, date and time slot");
       return;
     }
     
@@ -80,13 +82,13 @@ const CreateAppointment = () => {
         purpose,
       });
 
-      alert("Appointment created successfully");
+      toast.success("Appointment created successfully");
       setDate("");
       setSlots([]);
       setSelectedSlot(null);
       setPurpose("");
     } catch {
-      alert("Failed to create appointment");
+      toast.error("Failed to create appointment");
     }
   };
 

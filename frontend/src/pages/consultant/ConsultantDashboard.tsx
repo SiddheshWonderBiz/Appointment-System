@@ -119,7 +119,7 @@ const ConsultantDashboard = () => {
                 </h3>
 
                 <p className="text-sm text-gray-600 mt-2">
-                  View your previous accepted or rejected consultations.
+                  View your previous completed or rejected consultations.
                 </p>
               </div>
             </div>

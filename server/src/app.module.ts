@@ -9,9 +9,25 @@ import { UserModule } from './user/user.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { ConsultantController } from './consultant/consultant.controller';
 import { ConsultantModule } from './consultant/consultant.module';
+import { BullModule } from '@nestjs/bull';
+import { MailModule } from './mail/mail.module';
 
 @Module({
-  imports: [ ConfigModule.forRoot({ isGlobal: true }),AuthModule, PrismaModule, UserModule, AppointmentModule, ConsultantModule ],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    AuthModule,
+    PrismaModule,
+    UserModule,
+    AppointmentModule,
+    ConsultantModule,
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    MailModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

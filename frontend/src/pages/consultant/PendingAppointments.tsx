@@ -82,7 +82,7 @@ const PendingAppointments = () => {
         )}
 
         {!loading && pendingAppointments.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-8">
             {pendingAppointments.map((appt) => (
               <div key={appt.id} className="bg-white border rounded-xl p-5">
                 <p className="font-semibold text-gray-800">

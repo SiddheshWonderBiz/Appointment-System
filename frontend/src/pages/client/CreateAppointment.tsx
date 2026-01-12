@@ -4,8 +4,6 @@ import Header from "../../common/Header";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-
-
 type Consultant = {
   id: number;
   name: string;
@@ -33,6 +31,8 @@ const CreateAppointment = () => {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [purpose, setPurpose] = useState("");
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,6 +44,7 @@ const CreateAppointment = () => {
   useEffect(() => {
     if (!consultantId || !date) return;
 
+    setLoadingSlots(true);
     api
       .get(`/appointment/availability/${consultantId}`, {
         params: { date },
@@ -55,24 +56,27 @@ const CreateAppointment = () => {
       .catch(() => {
         setSlots([]);
         setSelectedSlot(null);
-      });
+      })
+      .finally(() => setLoadingSlots(false));
   }, [consultantId, date]);
 
   const isSunday = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.getDay() === 0;
-  }
+  };
+
   const submit = async () => {
     if (isSunday(date)) {
-      toast.info("Appointments cannot be booked on Sundays. Please select another date.");
+      toast.info(
+        "Appointments cannot be booked on Sundays. Please select another date."
+      );
       return;
     }
-    
+
     if (!consultantId || !date || !selectedSlot) {
       toast.info("Please select consultant, date and time slot");
       return;
     }
-    
 
     try {
       await api.post("/appointment/create", {
@@ -82,48 +86,52 @@ const CreateAppointment = () => {
         purpose,
       });
 
-      toast.success("Appointment created successfully,Confirmation email sent to consultant");
-      setDate("");
-      setSlots([]);
-      setSelectedSlot(null);
-      setPurpose("");
+      toast.success(
+        "Appointment created successfully. Confirmation email sent."
+      );
+      navigate("/my-appointments");
     } catch {
       toast.error("Failed to create appointment");
     }
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-xl border p-8 animate-slideUp">
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-            >
-              ←
-            </button>
 
-            <h2 className="text-2xl font-semibold text-gray-800">
+      <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* PAGE HEADER */}
+        <div className="flex items-center gap-4 mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-sm px-3 py-2 rounded-md border bg-white hover:bg-gray-100"
+          >
+            ← 
+          </button>
+
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
               Create Appointment
-            </h2>
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Select consultant, date, and preferred time slot
+            </p>
           </div>
-          <p className="text-gray-500 mb-8">
-            Choose a consultant, date, and time slot
-          </p>
+        </div>
 
+        {/* FORM */}
+        <div className="bg-white border rounded-xl p-8 space-y-8">
           {/* CONSULTANT */}
-          <div className="mb-6">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Consultant
             </label>
             <select
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
+              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               value={consultantId ?? ""}
               onChange={(e) => setConsultantId(Number(e.target.value))}
             >
-              <option value="">Select Consultant</option>
+              <option value="">Select consultant</option>
               {consultants.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} {c.specialty && `(${c.specialty})`}
@@ -133,7 +141,7 @@ const CreateAppointment = () => {
           </div>
 
           {/* DATE */}
-          <div className="mb-6">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Date
             </label>
@@ -142,64 +150,79 @@ const CreateAppointment = () => {
               value={date}
               min={new Date().toISOString().split("T")[0]}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
+              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
-          {/* SLOTS */}
-          {slots.length > 0 && (
-            <div className="mb-8">
-              <p className="font-medium text-gray-800 mb-3">
-                Available Time Slots
-              </p>
+          {/* TIME SLOTS */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Available Time Slots
+            </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {slots.map((slot, index) => {
-                  const isSelected = selectedSlot?.start === slot.start;
+            {loadingSlots ? (
+              <p className="text-sm text-gray-500">Loading slots...</p>
+            ) : slots.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No slots available for selected date
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {slots.map((slot) => {
+                  const selected =
+                    selectedSlot?.start === slot.start;
 
                   return (
                     <button
-                      key={`${slot.start}-${slot.end}-${index}`}
+                      key={slot.start}
                       onClick={() => setSelectedSlot(slot)}
-                      className={`py-2.5 text-sm rounded-lg border transition
-                      ${
-                        isSelected
-                          ? "bg-emerald-500 text-white border-emerald-500 shadow"
-                          : "bg-white hover:bg-emerald-50 hover:border-emerald-300"
-                      }
-                    `}
+                      className={`text-sm px-3 py-2 rounded-md border transition
+                        ${
+                          selected
+                            ? "bg-emerald-600 text-white border-emerald-600"
+                            : "bg-white hover:border-emerald-400 hover:bg-emerald-50"
+                        }
+                      `}
                     >
                       {formatTime(slot.start)} – {formatTime(slot.end)}
                     </button>
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* PURPOSE */}
-          <div className="mb-8">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Purpose
+              Purpose (optional)
             </label>
             <input
-              placeholder="Briefly describe the purpose"
+              placeholder="Brief reason for appointment"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
+              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
-          {/* SUBMIT */}
-          <button
-            onClick={submit}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-lg transition shadow-md"
-          >
-            Confirm Appointment
-          </button>
+          {/* ACTIONS */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              className="px-5 py-2.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              Confirm Appointment
+            </button>
+          </div>
         </div>
-      </div>
-    </>
+      </main>
+    </div>
   );
 };
 

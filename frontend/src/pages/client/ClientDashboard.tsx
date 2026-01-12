@@ -1,83 +1,215 @@
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Calendar, List, LogOut } from "lucide-react";
+import { Calendar, List } from "lucide-react";
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
 import Header from "../../common/Header";
-import client from "../../assets/client.png";
+
+type AppointmentStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "REJECTED"
+  | "COMPLETED";
+
+type Appointment = {
+  id: number;
+  startAt: string;
+  endAt: string;
+  status: AppointmentStatus;
+  consultant?: {
+    name: string;
+  };
+};
 
 const ClientDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [upcoming, setUpcoming] = useState<Appointment[]>([]);
+  const [history, setHistory] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [upcomingRes, historyRes] = await Promise.all([
+          api.get("/appointment/me"),
+          api.get("/appointment/me/history"),
+        ]);
+
+        setUpcoming(upcomingRes.data);
+        setHistory(historyRes.data);
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // -------- STATS ----------
+  const upcomingCount = upcoming.length;
+
+  const completedCount = history.filter(
+    (a) => a.status === "COMPLETED"
+  ).length;
+
+  const cancelledCount = history.filter(
+    (a) => a.status === "CANCELLED" || a.status === "REJECTED"
+  ).length;
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* HEADER */}
+    <div className="min-h-screen bg-gray-50">
       <Header />
 
-      {/* CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex flex-col lg:flex-row items-center lg:items-start gap-12">
-          {/* LEFT CONTENT */}
-          <div className="w-full lg:w-1/2">
-            <h2 className="text-2xl sm:text-3xl font-serif text-gray-900 mb-2">
-              Welcome back,{" "}
-              <span className="text-emerald-600">{user?.name}</span>
-            </h2>
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* PAGE HEADER */}
+        <div className="mb-8">
+          <h1 className="text-gray-600 text-xl">
+            Client Dashboard
+          </h1>
+          <p className="text-2xl sm:text-3xl font-serif mb-2">
+            Welcome back, <span className=" text-emerald-600">{user?.name}</span>
+          </p>
+        </div>
 
-            <p className="text-gray-600 mb-8">
-              What would you like to do today?
-            </p>
+        {/* SUMMARY CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+          <StatCard label="Upcoming" value={upcomingCount} />
+          <StatCard label="Completed" value={completedCount} />
+          <StatCard label="Cancelled" value={cancelledCount} />
+        </div>
 
-            {/* VERTICAL CARDS */}
-            <div className="flex flex-col gap-6">
-              {/* BOOK APPOINTMENT */}
-              <div
-                onClick={() => navigate("/create-appointment")}
-                className="group cursor-pointer bg-white rounded-2xl border p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-              >
-                <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 mb-4">
-                  <Calendar />
-                </div>
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-1  gap-8">
+          {/* LEFT COLUMN */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* QUICK ACTIONS */}
+            <div className="bg-white border rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                Quick Actions
+              </h2>
 
-                <h3 className="text-lg font-semibold text-gray-800 group-hover:text-emerald-600 transition">
-                  Book Appointment
-                </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ActionCard
+                  icon={<Calendar size={18} />}
+                  title="Book Appointment"
+                  description="Schedule a new consultation"
+                  color="emerald"
+                  onClick={() => navigate("/create-appointment")}
+                />
 
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                  Schedule a new consultation with a consultant.
-                </p>
+                <ActionCard
+                  icon={<List size={18} />}
+                  title="My Appointments"
+                  description="View & manage appointments"
+                  color="indigo"
+                  onClick={() => navigate("/my-appointments")}
+                />
               </div>
+            </div>
 
-              {/* MY APPOINTMENTS */}
-              <div
-                onClick={() => navigate("/my-appointments")}
-                className="group cursor-pointer bg-white rounded-2xl border p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-              >
-                <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 mb-4">
-                  <List />
+            {/* UPCOMING APPOINTMENTS */}
+            <div className="bg-white border rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                Upcoming Appointments
+              </h2>
+
+              {loading ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : upcoming.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm text-gray-500 mb-4">
+                    No upcoming appointments
+                  </p>
+                  <button
+                    onClick={() => navigate("/create-appointment")}
+                    className="px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Book Appointment
+                  </button>
                 </div>
-
-                <h3 className="text-lg font-semibold text-gray-800 group-hover:text-indigo-600 transition">
-                  My Appointments
-                </h3>
-
-                <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                  View and manage your scheduled appointments.
-                </p>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {upcoming.slice(0, 3).map((appt) => (
+                    <div
+                      key={appt.id}
+                      className="flex justify-between items-center border rounded-lg p-4"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {appt.consultant?.name ?? "Consultant"}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(appt.startAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <StatusBadge status={appt.status} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* RIGHT IMAGE  */}
-          <div className="w-full lg:w-1/2 flex justify-center lg:justify-end">
-            <img
-              src={client}
-              alt="Client illustration"
-              className="w-full max-w-md sm:max-w-lg lg:max-w-xl xl:max-w-2xl object-contain"
-            />
-          </div>
         </div>
       </main>
     </div>
+  );
+};
+
+/* ----------------- SMALL COMPONENTS ----------------- */
+
+const StatCard = ({ label, value }: { label: string; value: number }) => (
+  <div className="bg-white border rounded-xl p-5">
+    <p className="text-sm text-gray-500">{label}</p>
+    <p className="text-2xl font-semibold text-gray-900 mt-2">{value}</p>
+  </div>
+);
+
+const ActionCard = ({
+  icon,
+  title,
+  description,
+  color,
+  onClick,
+}: any) => (
+  <div
+    onClick={onClick}
+    className={`cursor-pointer border rounded-lg p-4 hover:border-${color}-500 transition`}
+  >
+    <div className="flex items-center gap-3">
+      <div
+        className={`w-10 h-10 flex items-center justify-center rounded-md bg-${color}-50 text-${color}-600`}
+      >
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-900">{title}</p>
+        <p className="text-xs text-gray-500">{description}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const StatusBadge = ({ status }: { status: AppointmentStatus }) => {
+  const map: Record<AppointmentStatus, string> = {
+    PENDING: "bg-yellow-100 text-yellow-700",
+    CONFIRMED: "bg-emerald-100 text-emerald-700",
+    COMPLETED: "bg-gray-200 text-gray-700",
+    CANCELLED: "bg-red-100 text-red-700",
+    REJECTED: "bg-red-100 text-red-700",
+  };
+
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-1 rounded-md ${map[status]}`}
+    >
+      {status}
+    </span>
   );
 };
 

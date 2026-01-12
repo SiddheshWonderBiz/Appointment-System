@@ -18,8 +18,7 @@ type Appointment = {
 const ScheduledAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
-  
+  const navigate = useNavigate();
 
   useEffect(() => {
     api
@@ -42,12 +41,14 @@ const ScheduledAppointments = () => {
 
       setAppointments((prev) => prev.filter((appt) => appt.id !== id));
 
-      toast.success("Appointments completed successfully, Status email sent to client")
+      toast.success(
+        "Appointments completed successfully, Status email sent to client"
+      );
     } catch {
       toast.error("Failed to complete appointment");
     }
   };
-    if (loading) {
+  if (loading) {
     return <div className="text-center py-10">Loading...</div>;
   }
 
@@ -55,7 +56,7 @@ const ScheduledAppointments = () => {
     <>
       <Header />
       <div className="max-w-4xl mx-auto px-4 py-8">
-               <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
             className="px-3 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -69,15 +70,10 @@ const ScheduledAppointments = () => {
         {appointments.length === 0 ? (
           <p className="text-gray-500">No scheduled appointments</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 mt-8">
             {appointments.map((appt) => (
-              <div
-                key={appt.id}
-                className="bg-white border rounded-xl p-5"
-              >
-                <p className="font-semibold">
-                  {appt.client.name}
-                </p>
+              <div key={appt.id} className="bg-white border rounded-xl p-5">
+                <p className="font-semibold">{appt.client.name}</p>
 
                 <p className="text-sm text-gray-600">
                   {new Date(appt.startAt).toLocaleString()} –{" "}
@@ -106,6 +102,3 @@ const ScheduledAppointments = () => {
 };
 
 export default ScheduledAppointments;
-
-
-

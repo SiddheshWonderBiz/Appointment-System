@@ -120,7 +120,7 @@ const ConsultantDashboard = () => {
         {/* STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <StatCard label="Pending Requests" value={pendingCount} />
-          <StatCard label="Scheduled Today & Upcoming" value={scheduledCount} />
+          <StatCard label="Scheduled & Upcoming" value={scheduledCount} />
           <StatCard label="Completed" value={completedCount} />
         </div>
 

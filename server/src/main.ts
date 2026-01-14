@@ -4,12 +4,16 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
   app.use(cookieParser());
 
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL,
     credentials: true,
-  })
-  await app.listen(process.env.PORT ?? 3000);
+  });
+  console.log("DATABASE_URL:", process.env.DATABASE_URL);
+
+
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

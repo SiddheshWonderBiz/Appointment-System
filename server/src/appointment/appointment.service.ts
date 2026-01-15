@@ -356,32 +356,37 @@ export class AppointmentService {
     return updated;
   }
 
-  async getAvalibility(consultantId: number, date: string) {
-    const day = new Date(date); // No appointments on Sunday
-    if (day.getDay() === 0) {
-      return [];
-    } // Slots from 10 AM to 7 PM
-    const slots: Array<{ start: Date; end: Date }> = [];
-    for (let hr = 10; hr < 19; hr++) {
-      const start = new Date(date);
-      start.setHours(hr, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(hr + 1, 0, 0, 0);
-      slots.push({ start, end });
-    } // Fetch booked appointments
-    const bookedAppointments = await this.prismaService.appointment.findMany({
-      where: {
-        consultantId,
-        status: { in: [Status.PENDING, Status.SCHEDULED] },
-        startAt: { gte: slots[0].start, lte: slots[slots.length - 1].end },
-      },
-    }); // Filter available slots (FIXED RETURN
-    const availableSlots = slots.filter(
-      (slot) =>
-        !bookedAppointments.some(
-          (b) => b.startAt < slot.end && b.endAt > slot.start,
-        ),
-    ); // Frontend-friendly response
-    return availableSlots.map((slot) => ({ start: slot.start, end: slot.end }));
+ async getAvalibility(consultantId: number, date: string) {
+  const day = new Date(`${date}T00:00:00`);
+  if (day.getDay() === 0) return [];
+
+  const slots: Array<{ start: Date; end: Date }> = [];
+
+  for (let hr = 10; hr < 19; hr++) {
+    const start = new Date(`${date}T${String(hr).padStart(2, "0")}:00:00`);
+    const end = new Date(`${date}T${String(hr + 1).padStart(2, "0")}:00:00`);
+    slots.push({ start, end });
   }
+
+  const bookedAppointments = await this.prismaService.appointment.findMany({
+    where: {
+      consultantId,
+      status: { in: [Status.PENDING, Status.SCHEDULED] },
+      startAt: {
+        gte: slots[0].start,
+        lte: slots[slots.length - 1].end,
+      },
+    },
+  });
+
+  const availableSlots = slots.filter(
+    (slot) =>
+      !bookedAppointments.some(
+        (b) => b.startAt < slot.end && b.endAt > slot.start,
+      ),
+  );
+
+  return availableSlots;
+}
+
 }

@@ -12,6 +12,9 @@ import {
   appointmentCreatedHtml,
   appointmentStatusHtml,
 } from 'src/mail/mail.html-templates';
+function istDate(date: string, hour: number) {
+  return new Date(`${date}T${String(hour).padStart(2, '0')}:00:00+05:30`);
+}
 
 @Injectable()
 export class AppointmentService {
@@ -356,37 +359,38 @@ export class AppointmentService {
     return updated;
   }
 
- async getAvalibility(consultantId: number, date: string) {
-  const day = new Date(`${date}T00:00:00`);
-  if (day.getDay() === 0) return [];
+  async getAvalibility(consultantId: number, date: string) {
+    const day = new Date(`${date}T00:00:00+05:30`);
+    if (day.getDay() === 0) return [];
 
-  const slots: Array<{ start: Date; end: Date }> = [];
+    const slots: Array<{ start: Date; end: Date }> = [];
 
-  for (let hr = 10; hr < 19; hr++) {
-    const start = new Date(`${date}T${String(hr).padStart(2, "0")}:00:00`);
-    const end = new Date(`${date}T${String(hr + 1).padStart(2, "0")}:00:00`);
-    slots.push({ start, end });
-  }
+    for (let hr = 10; hr < 19; hr++) {
+      const start = new Date(
+        `${date}T${String(hr).padStart(2, '0')}:00:00+05:30`,
+      );
+      const end = new Date(
+        `${date}T${String(hr + 1).padStart(2, '0')}:00:00+05:30`,
+      );
+      slots.push({ start, end });
+    }
 
-  const bookedAppointments = await this.prismaService.appointment.findMany({
-    where: {
-      consultantId,
-      status: { in: [Status.PENDING, Status.SCHEDULED] },
-      startAt: {
-        gte: slots[0].start,
-        lte: slots[slots.length - 1].end,
+    const bookedAppointments = await this.prismaService.appointment.findMany({
+      where: {
+        consultantId,
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
+        startAt: {
+          gte: slots[0].start,
+          lte: slots[slots.length - 1].end,
+        },
       },
-    },
-  });
+    });
 
-  const availableSlots = slots.filter(
-    (slot) =>
-      !bookedAppointments.some(
-        (b) => b.startAt < slot.end && b.endAt > slot.start,
-      ),
-  );
-
-  return availableSlots;
-}
-
+    return slots.filter(
+      (slot) =>
+        !bookedAppointments.some(
+          (b) => b.startAt < slot.end && b.endAt > slot.start,
+        ),
+    );
+  }
 }

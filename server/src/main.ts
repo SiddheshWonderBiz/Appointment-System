@@ -8,7 +8,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:5173',
-      'https://your-frontend-domain.vercel.app',
+      'https://appointment-system-blond.vercel.app/',
     ],
     credentials: true,
   });

@@ -25,6 +25,7 @@ const Login = () => {
     setError("");
 
     try {
+      console.log(api)
       await api.post("/auth/login", { email, password });
       await refreshUser();
     } catch (err: any) {

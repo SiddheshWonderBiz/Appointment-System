@@ -8,6 +8,10 @@ import { contains } from 'class-validator';
 export class UserService {
   constructor(private prisma: PrismaService) {}
   //find consultants by specialty
+
+  async findUsers(){
+    return this.prisma.user.findMany();
+  }
   async findAllConsultants(specialty?: string) {
     const where:any = { role: Role.CONSULTANT, ...(specialty ? {specialty : {contains   : specialty, mode: 'insensitive'}} : {}) };
     return this.prisma.user.findMany({

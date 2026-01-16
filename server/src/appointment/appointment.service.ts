@@ -346,55 +346,56 @@ export class AppointmentService {
     return updated;
   }
 
- async getAvailability(consultantId: number, date: string) {
-  const [year, month, day] = date.split('-').map(Number);
+  async getAvailability(consultantId: number, date: string) {
+    const [year, month, day] = date.split('-').map(Number);
 
-  // IST "now"
-  const nowIST = new Date(
-    new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-  );
-
-  // Sunday check (IST)
-  const selectedIST = new Date(`${date}T00:00:00+05:30`);
-  if (selectedIST.getDay() === 0) return [];
-
-  const slots: { start: Date; end: Date }[] = [];
-
-  for (let hr = 10; hr < 19; hr++) {
-    //  FORCE IST using +05:30 offset
-    const startIST = new Date(
-      `${date}T${String(hr).padStart(2, "0")}:00:00+05:30`
+    // IST "now"
+    const nowIST = new Date(
+      new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
     );
 
-    const endIST = new Date(
-      `${date}T${String(hr + 1).padStart(2, "0")}:00:00+05:30`
-    );
+    const dayInIST = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'short',
+    }).format(new Date(date));
 
-    // Skip past slots (IST comparison)
-    if (
-      startIST.toDateString() === nowIST.toDateString() &&
-      startIST <= nowIST
-    ) {
-      continue;
+    // Sunday check (IST)
+    if (dayInIST === "Sun") return [];
+
+    const slots: { start: Date; end: Date }[] = [];
+
+    for (let hr = 10; hr < 19; hr++) {
+      //  FORCE IST using +05:30 offset
+      const startIST = new Date(
+        `${date}T${String(hr).padStart(2, '0')}:00:00+05:30`,
+      );
+
+      const endIST = new Date(
+        `${date}T${String(hr + 1).padStart(2, '0')}:00:00+05:30`,
+      );
+
+      // Skip past slots (IST comparison)
+      if (
+        startIST.toDateString() === nowIST.toDateString() &&
+        startIST <= nowIST
+      ) {
+        continue;
+      }
+
+      slots.push({ start: startIST, end: endIST });
     }
 
-    slots.push({ start: startIST, end: endIST });
+    // Fetch booked slots
+    const booked = await this.prismaService.appointment.findMany({
+      where: {
+        consultantId,
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
+      },
+    });
+
+    return slots.filter(
+      (slot) =>
+        !booked.some((b) => b.startAt < slot.end && b.endAt > slot.start),
+    );
   }
-
-  // Fetch booked slots
-  const booked = await this.prismaService.appointment.findMany({
-    where: {
-      consultantId,
-      status: { in: [Status.PENDING, Status.SCHEDULED] },
-    },
-  });
-
-  return slots.filter(
-    (slot) =>
-      !booked.some(
-        (b) => b.startAt < slot.end && b.endAt > slot.start
-      )
-  );
-}
-
 }

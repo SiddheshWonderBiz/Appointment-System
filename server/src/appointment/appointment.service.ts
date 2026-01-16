@@ -12,7 +12,8 @@ import {
   appointmentCreatedHtml,
   appointmentStatusHtml,
 } from 'src/mail/mail.html-templates';
-import { getISTNow } from 'src/utils/time.util';
+// import { getISTNow } from 'src/utils/time.util';
+import {istToUtc} from 'src/utils/time.util';
 
 @Injectable()
 export class AppointmentService {
@@ -343,51 +344,54 @@ export class AppointmentService {
   }
 
   async getAvailability(consultantId: number, date: string) {
-    const istNow = getISTNow();
+  const [year, month, day] = date.split("-").map(Number);
 
-    // Parse date parts manually (VERY IMPORTANT)
-    const [year, month, day] = date.split('-').map(Number);
+  // Sunday check (IST-based)
+  const istDay = new Date(year, month - 1, day).getDay();
+  if (istDay === 0) return [];
 
-    // Create IST date at midnight
-    const selectedDate = new Date(year, month - 1, day);
+  // Current IST time
+  const istNow = new Date(
+    new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+  );
 
-    // No Sundays
-    if (selectedDate.getDay() === 0) {
-      return [];
+  const slots: Array<{ start: Date; end: Date }> = [];
+
+  for (let hr = 10; hr < 19; hr++) {
+    // Create IST slot but convert to UTC
+    const startUtc = istToUtc(year, month, day, hr);
+    const endUtc = istToUtc(year, month, day, hr + 1);
+
+    // Skip past slots (IST comparison)
+    const slotIst = new Date(year, month - 1, day, hr, 0, 0);
+
+    if (
+      slotIst.toDateString() === istNow.toDateString() &&
+      slotIst <= istNow
+    ) {
+      continue;
     }
 
-    const slots: Array<{ start: Date; end: Date }> = [];
-
-    for (let hr = 10; hr < 19; hr++) {
-      const start = new Date(year, month - 1, day, hr, 0, 0);
-      const end = new Date(year, month - 1, day, hr + 1, 0, 0);
-
-      // Skip past slots for TODAY
-      if (start.toDateString() === istNow.toDateString() && start <= istNow) {
-        continue;
-      }
-
-      slots.push({ start, end });
-    }
-
-    const bookedAppointments = await this.prismaService.appointment.findMany({
-      where: {
-        consultantId,
-        status: { in: [Status.PENDING, Status.SCHEDULED] },
-        startAt: {
-          gte: slots[0]?.start,
-          lte: slots[slots.length - 1]?.end,
-        },
-      },
-    });
-
-    const availableSlots = slots.filter(
-      (slot) =>
-        !bookedAppointments.some(
-          (b) => b.startAt < slot.end && b.endAt > slot.start,
-        ),
-    );
-
-    return availableSlots;
+    slots.push({ start: startUtc, end: endUtc });
   }
+
+  const bookedAppointments = await this.prismaService.appointment.findMany({
+    where: {
+      consultantId,
+      status: { in: [Status.PENDING, Status.SCHEDULED] },
+      startAt: {
+        gte: slots[0]?.start,
+        lte: slots[slots.length - 1]?.end,
+      },
+    },
+  });
+
+  return slots.filter(
+    (slot) =>
+      !bookedAppointments.some(
+        (b) => b.startAt < slot.end && b.endAt > slot.start
+      )
+  );
+}
+
 }

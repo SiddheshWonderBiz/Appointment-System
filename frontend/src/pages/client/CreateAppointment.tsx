@@ -4,6 +4,8 @@ import Header from "../../common/Header";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
+/* ---------------- TYPES ---------------- */
+
 type Consultant = {
   id: number;
   name: string;
@@ -15,14 +17,32 @@ type Slot = {
   end: string;
 };
 
+/* ---------------- HELPERS ---------------- */
+
+// Format time ALWAYS in IST
 const formatTime = (utcIso: string) => {
-  const date = new Date(utcIso);
-  return date.toLocaleTimeString([], {
+  return new Date(utcIso).toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
 };
+
+// Today date in IST (for date picker min)
+const todayIST = new Date(
+  new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+)
+  .toISOString()
+  .split("T")[0];
+
+// Sunday check (IST-safe)
+const isSunday = (dateStr: string) => {
+  const date = new Date(`${dateStr}T00:00:00`);
+  return date.getDay() === 0;
+};
+
+/* ---------------- COMPONENT ---------------- */
 
 const CreateAppointment = () => {
   const [consultants, setConsultants] = useState<Consultant[]>([]);
@@ -35,16 +55,21 @@ const CreateAppointment = () => {
 
   const navigate = useNavigate();
 
+  /* ---------------- LOAD CONSULTANTS ---------------- */
+
   useEffect(() => {
     api.get("/consultant/list").then((res) => {
       setConsultants(res.data);
     });
   }, []);
 
+  /* ---------------- LOAD AVAILABILITY ---------------- */
+
   useEffect(() => {
     if (!consultantId || !date) return;
 
     setLoadingSlots(true);
+
     api
       .get(`/appointment/availability/${consultantId}`, {
         params: { date },
@@ -60,16 +85,11 @@ const CreateAppointment = () => {
       .finally(() => setLoadingSlots(false));
   }, [consultantId, date]);
 
-  const isSunday = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.getDay() === 0;
-  };
+  /* ---------------- SUBMIT ---------------- */
 
   const submit = async () => {
     if (isSunday(date)) {
-      toast.info(
-        "Appointments cannot be booked on Sundays. Please select another date."
-      );
+      toast.info("Appointments cannot be booked on Sundays");
       return;
     }
 
@@ -95,18 +115,20 @@ const CreateAppointment = () => {
     }
   };
 
+  /* ---------------- UI ---------------- */
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* PAGE HEADER */}
+        {/* HEADER */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate(-1)}
             className="text-sm px-3 py-2 rounded-md border bg-white hover:bg-gray-100"
           >
-            ← 
+            ←
           </button>
 
           <div>
@@ -127,7 +149,7 @@ const CreateAppointment = () => {
               Consultant
             </label>
             <select
-              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500"
               value={consultantId ?? ""}
               onChange={(e) => setConsultantId(Number(e.target.value))}
             >
@@ -148,9 +170,9 @@ const CreateAppointment = () => {
             <input
               type="date"
               value={date}
-              min={new Date().toISOString().split("T")[0]}
+              min={todayIST}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -169,8 +191,7 @@ const CreateAppointment = () => {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {slots.map((slot) => {
-                  const selected =
-                    selectedSlot?.start === slot.start;
+                  const selected = selectedSlot?.start === slot.start;
 
                   return (
                     <button
@@ -201,7 +222,7 @@ const CreateAppointment = () => {
               placeholder="Brief reason for appointment"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full p-3 border rounded-md focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 

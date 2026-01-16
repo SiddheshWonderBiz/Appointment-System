@@ -12,12 +12,7 @@ import {
   appointmentCreatedHtml,
   appointmentStatusHtml,
 } from 'src/mail/mail.html-templates';
-function istDate(date: string, hour: number) {
-  return new Date(`${date}T${String(hour).padStart(2, '0')}:00:00+05:30`);
-}
-const nowIST = new Date(
-  new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
-);
+import { getISTNow } from 'src/utils/time.util';
 
 @Injectable()
 export class AppointmentService {
@@ -38,20 +33,7 @@ export class AppointmentService {
     };
   }
 
-  private mapStatusForEmail(status: Status) {
-    switch (status) {
-      case Status.SCHEDULED:
-        return 'ACCEPTED';
-      case Status.REJECTED:
-        return 'REJECTED';
-      case Status.CANCELLED:
-        return 'CANCELLED';
-      case Status.COMPLETED:
-        return 'COMPLETED';
-      default:
-        return null;
-    }
-  }
+
 
   /* ------------------ CREATE ------------------ */
 
@@ -103,8 +85,8 @@ export class AppointmentService {
       data: {
         consultantId: dto.consultantId,
         clientId: user.id,
-        startAt,
-        endAt,
+        startAt:new Date(startAt),
+        endAt:new Date(endAt),
         purpose: dto.purpose,
         status: Status.PENDING,
       },
@@ -362,47 +344,56 @@ export class AppointmentService {
     return updated;
   }
 
-  async getAvalibility(consultantId: number, date: string) {
-    const day = new Date(`${date}T00:00:00+05:30`);
-    if (day.getDay() === 0) return [];
+  async getAvailability(consultantId: number, date: string) {
+    const selectedDate = new Date(date);
+
+    // No Sunday
+    if (selectedDate.getDay() === 0) {
+      return [];
+    }
+
+    const istNow = getISTNow();
 
     const slots: Array<{ start: Date; end: Date }> = [];
 
     for (let hr = 10; hr < 19; hr++) {
-      const start = new Date(
-        `${date}T${String(hr).padStart(2, '0')}:00:00+05:30`,
-      );
-      const end = new Date(
-        `${date}T${String(hr + 1).padStart(2, '0')}:00:00+05:30`,
-      );
+      const start = new Date(date);
+      start.setHours(hr, 0, 0, 0);
+
+      const end = new Date(date);
+      end.setHours(hr + 1, 0, 0, 0);
+
+      // FILTER PAST SLOTS
+      if (start <= istNow && start.toDateString() === istNow.toDateString()) {
+        continue;
+      }
+
       slots.push({ start, end });
     }
 
+    // Fetch booked appointments
     const bookedAppointments = await this.prismaService.appointment.findMany({
       where: {
         consultantId,
         status: { in: [Status.PENDING, Status.SCHEDULED] },
         startAt: {
-          gte: slots[0].start,
-          lte: slots[slots.length - 1].end,
+          gte: slots[0]?.start,
+          lte: slots[slots.length - 1]?.end,
         },
       },
     });
 
-    const nowIST = new Date(
-      new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+    // Remove overlapping slots
+    const availableSlots = slots.filter(
+      (slot) =>
+        !bookedAppointments.some(
+          (b) => b.startAt < slot.end && b.endAt > slot.start,
+        ),
     );
 
-    const isToday = nowIST.toISOString().split('T')[0] === date;
-
-    return slots.filter((slot) => {
-      const isBooked = bookedAppointments.some(
-        (b) => b.startAt < slot.end && b.endAt > slot.start,
-      );
-
-      const isPast = isToday && slot.start <= nowIST;
-
-      return !isBooked && !isPast;
-    });
+    return availableSlots.map((s) => ({
+      start: s.start,
+      end: s.end,
+    }));
   }
 }

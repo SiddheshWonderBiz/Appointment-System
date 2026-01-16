@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { Role, Status } from '@prisma/client';
@@ -13,7 +9,7 @@ import {
   appointmentStatusHtml,
 } from 'src/mail/mail.html-templates';
 // import { getISTNow } from 'src/utils/time.util';
-import {istToUtc} from 'src/utils/time.util';
+import { istToUtc } from 'src/utils/time.util';
 
 @Injectable()
 export class AppointmentService {
@@ -26,10 +22,11 @@ export class AppointmentService {
 
   private formatDateTime(date: Date) {
     return {
-      date: date.toLocaleDateString(),
-      time: date.toLocaleTimeString([], {
-        hour: '2-digit',
+      date: date.toLocaleDateString('en-IN'),
+      time: date.toLocaleTimeString('en-IN', {
+        hour: 'numeric',
         minute: '2-digit',
+        hour12: true,
       }),
     };
   }
@@ -38,7 +35,7 @@ export class AppointmentService {
 
   async createAppointment(
     dto: CreateAppointmentDto,
-    user: { id: number; role: Role; name: string },
+    user: { id: number; role: Role },
   ) {
     if (user.role !== Role.CLIENT) {
       throw new ForbiddenException('Only clients can create appointments');
@@ -46,28 +43,37 @@ export class AppointmentService {
 
     const startAt = new Date(dto.startAt);
     const endAt = new Date(dto.endAt);
+    const now = new Date();
 
+    // Basic checks
     if (startAt >= endAt) {
-      throw new ForbiddenException('Invalid appointment time range');
+      throw new ForbiddenException('Invalid time range');
     }
 
+    // Sunday block
     if (startAt.getDay() === 0) {
-      throw new ForbiddenException(
-        'Appointments cannot be scheduled on Sundays',
-      );
+      throw new ForbiddenException('Appointments not allowed on Sundays');
     }
 
+    // Past date / time block
+    if (startAt <= now) {
+      throw new ForbiddenException('Cannot book past time slots');
+    }
+
+    // Working hours: 10 AM – 7 PM (1-hour only)
     if (
       startAt.getHours() < 10 ||
       endAt.getHours() > 19 ||
       startAt.getMinutes() !== 0 ||
-      endAt.getMinutes() !== 0
+      endAt.getMinutes() !== 0 ||
+      endAt.getTime() - startAt.getTime() !== 60 * 60 * 1000
     ) {
       throw new ForbiddenException(
-        'Appointments must be between 10 AM and 7 PM (full hours only)',
+        'Appointments must be between 10 AM and 7 PM (1 hour only)',
       );
     }
 
+    // Conflict check
     const conflict = await this.prismaService.appointment.findFirst({
       where: {
         consultantId: dto.consultantId,
@@ -77,22 +83,19 @@ export class AppointmentService {
     });
 
     if (conflict) {
-      throw new ForbiddenException('Consultant is not available for this slot');
+      throw new ForbiddenException('Slot already booked');
     }
 
     const appointment = await this.prismaService.appointment.create({
       data: {
         consultantId: dto.consultantId,
         clientId: user.id,
-        startAt: new Date(startAt),
-        endAt: new Date(endAt),
+        startAt,
+        endAt,
         purpose: dto.purpose,
         status: Status.PENDING,
       },
-      include: {
-        consultant: true,
-        client: true,
-      },
+      include: { consultant: true, client: true },
     });
 
     const { date, time } = this.formatDateTime(startAt);
@@ -344,54 +347,42 @@ export class AppointmentService {
   }
 
   async getAvailability(consultantId: number, date: string) {
-  const [year, month, day] = date.split("-").map(Number);
+    const [y, m, d] = date.split('-').map(Number);
+    const selectedDate = new Date(y, m - 1, d);
+    const now = new Date();
 
-  // Sunday check (IST-based)
-  const istDay = new Date(year, month - 1, day).getDay();
-  if (istDay === 0) return [];
+    // Sunday
+    if (selectedDate.getDay() === 0) return [];
 
-  // Current IST time
-  const istNow = new Date(
-    new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-  );
+    const slots: { start: Date; end: Date }[] = [];
 
-  const slots: Array<{ start: Date; end: Date }> = [];
+    for (let hr = 10; hr < 19; hr++) {
+      const start = new Date(y, m - 1, d, hr, 0, 0);
+      const end = new Date(y, m - 1, d, hr + 1, 0, 0);
 
-  for (let hr = 10; hr < 19; hr++) {
-    // Create IST slot but convert to UTC
-    const startUtc = istToUtc(year, month, day, hr);
-    const endUtc = istToUtc(year, month, day, hr + 1);
+      // Skip past slots (today only)
+      if (
+        start.toDateString() === now.toDateString() &&
+        start <= now
+      ) {
+        continue;
+      }
 
-    // Skip past slots (IST comparison)
-    const slotIst = new Date(year, month - 1, day, hr, 0, 0);
-
-    if (
-      slotIst.toDateString() === istNow.toDateString() &&
-      slotIst <= istNow
-    ) {
-      continue;
+      slots.push({ start, end });
     }
 
-    slots.push({ start: startUtc, end: endUtc });
-  }
-
-  const bookedAppointments = await this.prismaService.appointment.findMany({
-    where: {
-      consultantId,
-      status: { in: [Status.PENDING, Status.SCHEDULED] },
-      startAt: {
-        gte: slots[0]?.start,
-        lte: slots[slots.length - 1]?.end,
+    const booked = await this.prismaService.appointment.findMany({
+      where: {
+        consultantId,
+        status: { in: [Status.PENDING, Status.SCHEDULED] },
       },
-    },
-  });
+    });
 
-  return slots.filter(
-    (slot) =>
-      !bookedAppointments.some(
-        (b) => b.startAt < slot.end && b.endAt > slot.start
-      )
-  );
-}
-
+    return slots.filter(
+      (slot) =>
+        !booked.some(
+          (b) => b.startAt < slot.end && b.endAt > slot.start,
+        ),
+    );
+  }
 }

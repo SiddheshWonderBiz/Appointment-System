@@ -30,11 +30,13 @@ const formatTime = (utcIso: string) => {
 };
 
 // Today date in IST (for date picker min)
-const todayIST = new Date(
-  new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-)
-  .toISOString()
-  .split("T")[0];
+const todayIST = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Kolkata",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
+
 
 // Sunday check (IST-safe)
 const isSunday = (dateStr: string) => {

@@ -15,6 +15,9 @@ import {
 function istDate(date: string, hour: number) {
   return new Date(`${date}T${String(hour).padStart(2, '0')}:00:00+05:30`);
 }
+const nowIST = new Date(
+  new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+);
 
 @Injectable()
 export class AppointmentService {
@@ -386,11 +389,20 @@ export class AppointmentService {
       },
     });
 
-    return slots.filter(
-      (slot) =>
-        !bookedAppointments.some(
-          (b) => b.startAt < slot.end && b.endAt > slot.start,
-        ),
+    const nowIST = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
     );
+
+    const isToday = nowIST.toISOString().split('T')[0] === date;
+
+    return slots.filter((slot) => {
+      const isBooked = bookedAppointments.some(
+        (b) => b.startAt < slot.end && b.endAt > slot.start,
+      );
+
+      const isPast = isToday && slot.start <= nowIST;
+
+      return !isBooked && !isPast;
+    });
   }
 }

@@ -33,8 +33,6 @@ export class AppointmentService {
     };
   }
 
-
-
   /* ------------------ CREATE ------------------ */
 
   async createAppointment(
@@ -85,8 +83,8 @@ export class AppointmentService {
       data: {
         consultantId: dto.consultantId,
         clientId: user.id,
-        startAt:new Date(startAt),
-        endAt:new Date(endAt),
+        startAt: new Date(startAt),
+        endAt: new Date(endAt),
         purpose: dto.purpose,
         status: Status.PENDING,
       },
@@ -345,33 +343,33 @@ export class AppointmentService {
   }
 
   async getAvailability(consultantId: number, date: string) {
-    const selectedDate = new Date(date);
+    const istNow = getISTNow();
 
-    // No Sunday
+    // Parse date parts manually (VERY IMPORTANT)
+    const [year, month, day] = date.split('-').map(Number);
+
+    // Create IST date at midnight
+    const selectedDate = new Date(year, month - 1, day);
+
+    // No Sundays
     if (selectedDate.getDay() === 0) {
       return [];
     }
 
-    const istNow = getISTNow();
-
     const slots: Array<{ start: Date; end: Date }> = [];
 
     for (let hr = 10; hr < 19; hr++) {
-      const start = new Date(date);
-      start.setHours(hr, 0, 0, 0);
+      const start = new Date(year, month - 1, day, hr, 0, 0);
+      const end = new Date(year, month - 1, day, hr + 1, 0, 0);
 
-      const end = new Date(date);
-      end.setHours(hr + 1, 0, 0, 0);
-
-      // FILTER PAST SLOTS
-      if (start <= istNow && start.toDateString() === istNow.toDateString()) {
+      // Skip past slots for TODAY
+      if (start.toDateString() === istNow.toDateString() && start <= istNow) {
         continue;
       }
 
       slots.push({ start, end });
     }
 
-    // Fetch booked appointments
     const bookedAppointments = await this.prismaService.appointment.findMany({
       where: {
         consultantId,
@@ -383,7 +381,6 @@ export class AppointmentService {
       },
     });
 
-    // Remove overlapping slots
     const availableSlots = slots.filter(
       (slot) =>
         !bookedAppointments.some(
@@ -391,9 +388,6 @@ export class AppointmentService {
         ),
     );
 
-    return availableSlots.map((s) => ({
-      start: s.start,
-      end: s.end,
-    }));
+    return availableSlots;
   }
 }

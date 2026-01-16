@@ -107,6 +107,6 @@ export class AppointmentController {
     @Param('consultantId') consultantId: string,
     @Query('date') date: string,
   ) {
-    return this.appointmentService.getAvalibility(+consultantId, date);
+    return this.appointmentService.getAvailability(+consultantId, date);
   }
 }

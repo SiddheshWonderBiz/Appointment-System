@@ -99,21 +99,14 @@ const CreateAppointment = () => {
   const visibleSlots = slots.filter((slot, index) => {
     // Future dates → show all slots
     if (date !== todayIST) {
-      console.log(`🟢 [Slot ${index}] Future date → showing slot`);
+      
       return true;
     }
 
     const nowIST = getNowISTTimestamp();
     const slotStart = getSlotStartTimestamp(slot.start);
 
-    console.group(`⏱ SLOT CHECK [${index}]`);
-    console.log("NOW IST (ms)        :", nowIST);
-    console.log("SLOT START (ms)     :", slotStart);
-    console.log(
-      "RESULT              :",
-      slotStart > nowIST ? "SHOW ✅" : "HIDE ❌"
-    );
-    console.groupEnd();
+    
 
     return slotStart > nowIST;
   });

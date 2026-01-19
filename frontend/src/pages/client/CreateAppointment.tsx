@@ -18,10 +18,7 @@ type Slot = {
 
 /* ================= TIME HELPERS ================= */
 
-/**
- * Current IST timestamp (milliseconds)
- * No locale parsing → no Invalid Date
- */
+
 const getNowISTTimestamp = () => {
   const now = new Date();
   const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -29,16 +26,11 @@ const getNowISTTimestamp = () => {
   return utcTime + istOffset;
 };
 
-/**
- * Slot start timestamp (UTC from backend)
- */
 const getSlotStartTimestamp = (iso: string) => {
   return new Date(iso).getTime();
 };
 
-/**
- * Format slot time for UI (IST only for display)
- */
+
 const formatTimeIST = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", {
     hour: "numeric",
@@ -47,9 +39,7 @@ const formatTimeIST = (iso: string) =>
     timeZone: "Asia/Kolkata",
   });
 
-/**
- * Today's date in IST (yyyy-mm-dd)
- */
+
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
 }).format(new Date());

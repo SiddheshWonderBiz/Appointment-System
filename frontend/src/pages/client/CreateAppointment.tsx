@@ -9,41 +9,41 @@ import { toast } from "react-toastify";
 type Consultant = {
   id: number;
   name: string;
-  specialty?: string;
 };
 
 type Slot = {
-  start: string; // ISO (UTC) from backend
+  start: string; // ISO string from backend
   end: string;
 };
 
 /* ---------------- HELPERS ---------------- */
 
-// Display time in IST (UI only)
+// Format slot time for UI (IST)
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Kolkata",
   });
 
-// Get current UTC timestamp based on IST clock
-// IST = UTC + 5:30 → subtract offset to get UTC time
-const getNowUtcFromIST = () => {
-  const istOffsetMinutes = 330;
-  return Date.now() - istOffsetMinutes * 60 * 1000;
-};
+// Get CURRENT IST time as Date
+const getNowIST = () =>
+  new Date(
+    new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+    })
+  );
 
-// Check if selected date is today in IST
-const isTodayIST = (selectedDate: string) => {
-  const todayIST = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(new Date());
+// Convert SLOT START to IST Date
+const getSlotStartIST = (iso: string) =>
+  new Date(
+    new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+    })
+  );
 
-  return selectedDate === todayIST;
-};
-
-// Min date for date picker (IST)
+// Today date string in IST (yyyy-mm-dd)
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
 }).format(new Date());
@@ -80,12 +80,35 @@ const CreateAppointment = () => {
         params: { date },
       })
       .then((res) => {
+        console.log("SLOTS FROM BACKEND:", res.data);
         setSlots(res.data);
         setSelectedSlot(null);
       })
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
   }, [consultantId, date]);
+
+  /* ---------------- FILTER SLOTS (IST LOGIC) ---------------- */
+
+  const visibleSlots = slots.filter((slot) => {
+    // For future dates → show all slots
+    if (date !== todayIST) return true;
+
+    const nowIST = getNowIST();
+    const slotStartIST = getSlotStartIST(slot.start);
+
+    // 🔍 DEBUGGING
+    console.log("------ SLOT CHECK ------");
+    console.log("NOW IST        :", nowIST.toString());
+    console.log("SLOT START IST :", slotStartIST.toString());
+    console.log(
+      "SHOW SLOT ?   :",
+      slotStartIST > nowIST ? "YES ✅" : "NO ❌"
+    );
+
+    // Hide past slots
+    return slotStartIST > nowIST;
+  });
 
   /* ---------------- SUBMIT ---------------- */
 
@@ -110,17 +133,7 @@ const CreateAppointment = () => {
     }
   };
 
-  /* ---------------- RENDER ---------------- */
-
-  const visibleSlots = slots.filter((slot) => {
-    // Future dates → show all slots
-    if (!isTodayIST(date)) return true;
-
-    const nowUtc = getNowUtcFromIST();
-    const slotStartUtc = new Date(slot.start).getTime();
-
-    return slotStartUtc > nowUtc;
-  });
+  /* ---------------- UI ---------------- */
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -162,10 +175,10 @@ const CreateAppointment = () => {
                 <button
                   key={slot.start}
                   onClick={() => setSelectedSlot(slot)}
-                  className={`p-2 border rounded-md transition ${
+                  className={`p-2 border rounded-md ${
                     selectedSlot?.start === slot.start
                       ? "bg-emerald-600 text-white"
-                      : "bg-white hover:bg-gray-100"
+                      : "bg-white"
                   }`}
                 >
                   {formatTime(slot.start)} – {formatTime(slot.end)}
@@ -173,7 +186,9 @@ const CreateAppointment = () => {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500">No slots available for selected date</p>
+            <p className="text-gray-500">
+              No slots available for selected date
+            </p>
           )}
 
           {/* Purpose */}

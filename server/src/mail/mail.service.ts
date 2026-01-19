@@ -6,16 +6,25 @@ export class MailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: false, // STARTTLS
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
+  this.transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  this.transporter.verify((error, success) => {
+    if (error) {
+      console.error("SMTP CONFIG ERROR ❌", error);
+    } else {
+      console.log("SMTP READY ✅");
+    }
+  });
+}
+
 
   sendMail(options: {
     to: string;

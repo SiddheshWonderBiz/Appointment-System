@@ -76,7 +76,7 @@ const CreateAppointment = () => {
         params: { date },
       })
       .then((res) => {
-        console.log("📦 RAW SLOTS FROM BACKEND:", res.data);
+       
         setSlots(res.data);
         setSelectedSlot(null);
       })

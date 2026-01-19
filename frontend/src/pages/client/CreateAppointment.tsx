@@ -13,13 +13,13 @@ type Consultant = {
 };
 
 type Slot = {
-  start: string;
+  start: string; // ISO (UTC) from backend
   end: string;
 };
 
 /* ---------------- HELPERS ---------------- */
 
-// Format time in IST
+// Display time in IST (UI only)
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", {
     hour: "numeric",
@@ -27,22 +27,23 @@ const formatTime = (iso: string) =>
     hour12: true,
   });
 
-//current time
-const getNowIST = () =>
-  new Date(
-    new Date().toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    })
-  );
+// Get current UTC timestamp based on IST clock
+// IST = UTC + 5:30 → subtract offset to get UTC time
+const getNowUtcFromIST = () => {
+  const istOffsetMinutes = 330;
+  return Date.now() - istOffsetMinutes * 60 * 1000;
+};
 
-const toISTDate = (iso: string) =>
-  new Date(
-    new Date(iso).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    })
-  );
+// Check if selected date is today in IST
+const isTodayIST = (selectedDate: string) => {
+  const todayIST = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
 
-// Today in IST
+  return selectedDate === todayIST;
+};
+
+// Min date for date picker (IST)
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
 }).format(new Date());
@@ -109,6 +110,18 @@ const CreateAppointment = () => {
     }
   };
 
+  /* ---------------- RENDER ---------------- */
+
+  const visibleSlots = slots.filter((slot) => {
+    // Future dates → show all slots
+    if (!isTodayIST(date)) return true;
+
+    const nowUtc = getNowUtcFromIST();
+    const slotStartUtc = new Date(slot.start).getTime();
+
+    return slotStartUtc > nowUtc;
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -141,34 +154,26 @@ const CreateAppointment = () => {
           />
 
           {/* Slots */}
-          {slots.length > 0 ? (
+          {loadingSlots ? (
+            <p className="text-gray-500">Loading slots...</p>
+          ) : visibleSlots.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {slots
-                .filter((slot) => {
-                  if (date !== todayIST) return true;
-
-                  const nowIST = getNowIST();
-                  const slotStartIST = toISTDate(slot.start);
-
-                  console.log(slotStartIST)
-                  return slotStartIST > nowIST;
-                })
-                .map((slot) => (
-                  <button
-                    key={slot.start}
-                    onClick={() => setSelectedSlot(slot)}
-                    className={`p-2 border rounded-md ${
-                      selectedSlot?.start === slot.start
-                        ? "bg-emerald-600 text-white"
-                        : "bg-white"
-                    }`}
-                  >
-                    {formatTime(slot.start)} – {formatTime(slot.end)}
-                  </button>
-                ))}
+              {visibleSlots.map((slot) => (
+                <button
+                  key={slot.start}
+                  onClick={() => setSelectedSlot(slot)}
+                  className={`p-2 border rounded-md transition ${
+                    selectedSlot?.start === slot.start
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white hover:bg-gray-100"
+                  }`}
+                >
+                  {formatTime(slot.start)} – {formatTime(slot.end)}
+                </button>
+              ))}
             </div>
           ) : (
-            <p className="text-gray-500">No slots remain for today</p>
+            <p className="text-gray-500">No slots available for selected date</p>
           )}
 
           {/* Purpose */}

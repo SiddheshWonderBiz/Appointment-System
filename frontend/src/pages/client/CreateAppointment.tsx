@@ -35,6 +35,13 @@ const getNowIST = () =>
     })
   );
 
+const toISTDate = (iso: string) =>
+  new Date(
+    new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+    })
+  );
+
 // Today in IST
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
@@ -134,36 +141,34 @@ const CreateAppointment = () => {
           />
 
           {/* Slots */}
-            {slots.length > 0 ? (
+          {slots.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {slots
-              .filter((slot) => {
-                // If selected date is NOT today → show all slots
-                if (date !== todayIST) return true;
+                .filter((slot) => {
+                  if (date !== todayIST) return true;
 
-                const nowIST = getNowIST();
-                const slotStart = new Date(slot.start);
+                  const nowIST = getNowIST();
+                  const slotStartIST = toISTDate(slot.start);
 
-                // Show only future slots
-                return slotStart > nowIST;
-              })
-              .map((slot) => (
-                <button
-                key={slot.start}
-                onClick={() => setSelectedSlot(slot)}
-                className={`p-2 border rounded-md ${
-                  selectedSlot?.start === slot.start
-                  ? "bg-emerald-600 text-white"
-                  : "bg-white"
-                }`}
-                >
-                {formatTime(slot.start)} – {formatTime(slot.end)}
-                </button>
-              ))}
+                  return slotStartIST > nowIST;
+                })
+                .map((slot) => (
+                  <button
+                    key={slot.start}
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`p-2 border rounded-md ${
+                      selectedSlot?.start === slot.start
+                        ? "bg-emerald-600 text-white"
+                        : "bg-white"
+                    }`}
+                  >
+                    {formatTime(slot.start)} – {formatTime(slot.end)}
+                  </button>
+                ))}
             </div>
-            ) : (
+          ) : (
             <p className="text-gray-500">No slots remain for today</p>
-            )}
+          )}
 
           {/* Purpose */}
           <input

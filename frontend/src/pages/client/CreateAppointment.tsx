@@ -150,6 +150,7 @@ const CreateAppointment = () => {
                   const nowIST = getNowIST();
                   const slotStartIST = toISTDate(slot.start);
 
+                  console.log(slotStartIST)
                   return slotStartIST > nowIST;
                 })
                 .map((slot) => (

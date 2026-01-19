@@ -4,7 +4,7 @@ import Header from "../../common/Header";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-/* ---------------- TYPES ---------------- */
+/* ================= TYPES ================= */
 
 type Consultant = {
   id: number;
@@ -12,14 +12,34 @@ type Consultant = {
 };
 
 type Slot = {
-  start: string; // ISO string from backend
+  start: string; // ISO UTC from backend
   end: string;
 };
 
-/* ---------------- HELPERS ---------------- */
+/* ================= TIME HELPERS ================= */
 
-// Format slot time for UI (IST)
-const formatTime = (iso: string) =>
+/**
+ * Current IST timestamp (milliseconds)
+ * No locale parsing → no Invalid Date
+ */
+const getNowISTTimestamp = () => {
+  const now = new Date();
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+  const istOffset = 5.5 * 60 * 60000; // IST = UTC + 5:30
+  return utcTime + istOffset;
+};
+
+/**
+ * Slot start timestamp (UTC from backend)
+ */
+const getSlotStartTimestamp = (iso: string) => {
+  return new Date(iso).getTime();
+};
+
+/**
+ * Format slot time for UI (IST only for display)
+ */
+const formatTimeIST = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", {
     hour: "numeric",
     minute: "2-digit",
@@ -27,28 +47,14 @@ const formatTime = (iso: string) =>
     timeZone: "Asia/Kolkata",
   });
 
-// Get CURRENT IST time as Date
-const getNowIST = () =>
-  new Date(
-    new Date().toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    })
-  );
-
-// Convert SLOT START to IST Date
-const getSlotStartIST = (iso: string) =>
-  new Date(
-    new Date(iso).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    })
-  );
-
-// Today date string in IST (yyyy-mm-dd)
+/**
+ * Today's date in IST (yyyy-mm-dd)
+ */
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
 }).format(new Date());
 
-/* ---------------- COMPONENT ---------------- */
+/* ================= COMPONENT ================= */
 
 const CreateAppointment = () => {
   const [consultants, setConsultants] = useState<Consultant[]>([]);
@@ -61,7 +67,7 @@ const CreateAppointment = () => {
 
   const navigate = useNavigate();
 
-  /* ---------------- LOAD CONSULTANTS ---------------- */
+  /* ================= LOAD CONSULTANTS ================= */
 
   useEffect(() => {
     api.get("/consultant/list").then((res) => {
@@ -69,7 +75,7 @@ const CreateAppointment = () => {
     });
   }, []);
 
-  /* ---------------- LOAD SLOTS ---------------- */
+  /* ================= LOAD SLOTS ================= */
 
   useEffect(() => {
     if (!consultantId || !date) return;
@@ -80,7 +86,7 @@ const CreateAppointment = () => {
         params: { date },
       })
       .then((res) => {
-        console.log("SLOTS FROM BACKEND:", res.data);
+        console.log("📦 RAW SLOTS FROM BACKEND:", res.data);
         setSlots(res.data);
         setSelectedSlot(null);
       })
@@ -88,29 +94,31 @@ const CreateAppointment = () => {
       .finally(() => setLoadingSlots(false));
   }, [consultantId, date]);
 
-  /* ---------------- FILTER SLOTS (IST LOGIC) ---------------- */
+  /* ================= FILTER LOGIC ================= */
 
-  const visibleSlots = slots.filter((slot) => {
-    // For future dates → show all slots
-    if (date !== todayIST) return true;
+  const visibleSlots = slots.filter((slot, index) => {
+    // Future dates → show all slots
+    if (date !== todayIST) {
+      console.log(`🟢 [Slot ${index}] Future date → showing slot`);
+      return true;
+    }
 
-    const nowIST = getNowIST();
-    const slotStartIST = getSlotStartIST(slot.start);
+    const nowIST = getNowISTTimestamp();
+    const slotStart = getSlotStartTimestamp(slot.start);
 
-    // 🔍 DEBUGGING
-    console.log("------ SLOT CHECK ------");
-    console.log("NOW IST        :", nowIST.toString());
-    console.log("SLOT START IST :", slotStartIST.toString());
+    console.group(`⏱ SLOT CHECK [${index}]`);
+    console.log("NOW IST (ms)        :", nowIST);
+    console.log("SLOT START (ms)     :", slotStart);
     console.log(
-      "SHOW SLOT ?   :",
-      slotStartIST > nowIST ? "YES ✅" : "NO ❌"
+      "RESULT              :",
+      slotStart > nowIST ? "SHOW ✅" : "HIDE ❌"
     );
+    console.groupEnd();
 
-    // Hide past slots
-    return slotStartIST > nowIST;
+    return slotStart > nowIST;
   });
 
-  /* ---------------- SUBMIT ---------------- */
+  /* ================= SUBMIT ================= */
 
   const submit = async () => {
     if (!consultantId || !date || !selectedSlot) {
@@ -133,14 +141,16 @@ const CreateAppointment = () => {
     }
   };
 
-  /* ---------------- UI ---------------- */
+  /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-semibold mb-6">Create Appointment</h1>
+        <h1 className="text-2xl font-semibold mb-6">
+          Create Appointment
+        </h1>
 
         <div className="bg-white border rounded-xl p-8 space-y-6">
           {/* Consultant */}
@@ -168,20 +178,21 @@ const CreateAppointment = () => {
 
           {/* Slots */}
           {loadingSlots ? (
-            <p className="text-gray-500">Loading slots...</p>
+            <p className="text-gray-500">Loading slots…</p>
           ) : visibleSlots.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {visibleSlots.map((slot) => (
                 <button
                   key={slot.start}
                   onClick={() => setSelectedSlot(slot)}
-                  className={`p-2 border rounded-md ${
+                  className={`p-2 border rounded-md transition ${
                     selectedSlot?.start === slot.start
                       ? "bg-emerald-600 text-white"
-                      : "bg-white"
+                      : "bg-white hover:bg-gray-100"
                   }`}
                 >
-                  {formatTime(slot.start)} – {formatTime(slot.end)}
+                  {formatTimeIST(slot.start)} –{" "}
+                  {formatTimeIST(slot.end)}
                 </button>
               ))}
             </div>
@@ -199,6 +210,7 @@ const CreateAppointment = () => {
             className="w-full p-3 border rounded-md"
           />
 
+          {/* Submit */}
           <button
             onClick={submit}
             className="w-full bg-emerald-600 text-white py-3 rounded-md"

@@ -27,6 +27,14 @@ const formatTime = (iso: string) =>
     hour12: true,
   });
 
+//current time
+const getNowIST = () =>
+  new Date(
+    new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+    })
+  );
+
 // Today in IST
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
@@ -94,8 +102,6 @@ const CreateAppointment = () => {
     }
   };
 
-  /* ---------------- UI ---------------- */
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -128,21 +134,36 @@ const CreateAppointment = () => {
           />
 
           {/* Slots */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {slots.map((slot) => (
-              <button
+            {slots.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {slots
+              .filter((slot) => {
+                // If selected date is NOT today → show all slots
+                if (date !== todayIST) return true;
+
+                const nowIST = getNowIST();
+                const slotStart = new Date(slot.start);
+
+                // Show only future slots
+                return slotStart > nowIST;
+              })
+              .map((slot) => (
+                <button
                 key={slot.start}
                 onClick={() => setSelectedSlot(slot)}
                 className={`p-2 border rounded-md ${
                   selectedSlot?.start === slot.start
-                    ? "bg-emerald-600 text-white"
-                    : "bg-white"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-white"
                 }`}
-              >
+                >
                 {formatTime(slot.start)} – {formatTime(slot.end)}
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+            ) : (
+            <p className="text-gray-500">No slots remain for today</p>
+            )}
 
           {/* Purpose */}
           <input

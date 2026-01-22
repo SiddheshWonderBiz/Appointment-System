@@ -1,47 +1,43 @@
-import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Injectable, Logger } from '@nestjs/common';
+import * as SibApiV3Sdk from 'sib-api-v3-sdk';
 
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
+  private readonly logger = new Logger(MailService.name);
+  private readonly emailApi: SibApiV3Sdk.TransactionalEmailsApi;
 
   constructor() {
-  this.transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+    const client = SibApiV3Sdk.ApiClient.instance;
+    client.authentications['api-key'].apiKey =
+      process.env.BREVO_API_KEY;
 
-  this.transporter.verify((error, success) => {
-    if (error) {
-      console.error("SMTP CONFIG ERROR ❌", error);
-    } else {
-      console.log("SMTP READY ✅");
-    }
-  });
-}
+    this.emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
+    this.logger.log('Brevo Mail Service initialized ');
+  }
 
-  sendMail(options: {
+  async sendMail(options: {
     to: string;
     subject: string;
-    text?: string;
-    html?: string;
+    html: string;
   }) {
-    this.transporter
-      .sendMail({
-        from: process.env.SMTP_FROM,
-        to: options.to,
+    try {
+      await this.emailApi.sendTransacEmail({
+        sender: {
+          email: process.env.SMTP_FROM!,
+          name: 'Appointment System',
+        },
+        to: [{ email: options.to }],
         subject: options.subject,
-        text: options.text,
-        html: options.html,
-      })
-      .catch((err) => {
-        console.error('Email failed:', err.message);
+        htmlContent: options.html,
       });
+
+      this.logger.log(`Email sent to ${options.to} `);
+    } catch (error: any) {
+      this.logger.error(
+        'Email failed ',
+        error?.response?.body || error.message,
+      );
+    }
   }
 }

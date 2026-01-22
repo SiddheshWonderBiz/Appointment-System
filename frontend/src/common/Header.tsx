@@ -1,8 +1,17 @@
 import { useAuth } from "../context/AuthContext";
 import { LogOut } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+
+  // Generate a random avatar if user.avatar not available
+  const avatarUrl = `https://avatars.dicebear.com/api/initials/${encodeURIComponent(
+    user?.name || "U",
+  )}.svg`;
 
   return (
     <header className="bg-gradient-to-r from-[#0f172a] via-[#0b1220] to-gray-700 px-6 py-4 shadow-md">
@@ -19,24 +28,51 @@ const Header = () => {
           </h1>
         </div>
 
-        {/* User Info + Logout */}
-        <div className="flex items-center gap-4">
+        {/* User Info + Avatar */}
+        <div className="flex items-center gap-4 relative">
           {user && (
-            <div className="hidden sm:flex flex-col items-end text-right">
-              <span className="text-gray-200 text-sm font-medium">
-                {user.name}
-              </span>
-              <span className="text-gray-400 text-xs">{user.role}</span>
-            </div>
-          )}
+            <>
+              <div
+                className="flex items-center cursor-pointer"
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              >
+                <img
+                  src={avatarUrl}
+                  alt="User Avatar"
+                  className="h-10 w-10 rounded-full border-2 border-emerald-500 object-cover"
+                />
+              </div>
 
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-sm transition-colors duration-200"
-          >
-            <LogOut size={18} />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+              {/* Optional small user info next to avatar */}
+              <div className="hidden sm:flex flex-col text-right">
+                <span className="text-gray-200 text-sm font-medium">
+                  {user.name}
+                </span>
+                <span className="text-gray-400 text-xs">{user.role}</span>
+              </div>
+
+              {/* Dropdown */}
+              {showProfileDropdown && (
+                <div className="absolute right-0 top-14 w-48 bg-white rounded-md shadow-lg py-2 z-50">
+                  <button
+                    onClick={() => {
+                      navigate("/profile");
+                      setShowProfileDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </header>

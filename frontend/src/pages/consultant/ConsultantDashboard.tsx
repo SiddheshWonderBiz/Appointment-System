@@ -16,7 +16,7 @@ type AppointmentStatus =
 
 type Appointment = {
   id: number;
-  startAt: string; // MM/DD/YY HH:mm or MM/DD/YY hh:mm AM/PM
+  startAt: string;
   endAt: string;
   status: AppointmentStatus;
   client: {
@@ -24,13 +24,22 @@ type Appointment = {
   };
 };
 
-/* ---------------- DATE HELPERS (IST SAFE) ---------------- */
+/* ---------------- DATE HELPERS (DEBUG ENABLED) ---------------- */
 
-/**
- * Parses MM/DD/YY string into local Date (IST)
- */
 const parseMMDDYYToDate = (dateStr: string): Date => {
-  const [datePart, timePart, meridian] = dateStr.split(" ");
+  console.log("🟡 RAW startAt from backend:", dateStr);
+
+  // Detect ISO format automatically
+  if (dateStr.includes("T")) {
+    const isoDate = new Date(dateStr);
+    console.log("🟢 Parsed as ISO:", isoDate.toString());
+    return isoDate;
+  }
+
+  const parts = dateStr.split(" ");
+  const datePart = parts[0];
+  const timePart = parts[1];
+  const meridian = parts[2];
 
   const [month, day, year] = datePart.split("/").map(Number);
   const fullYear = 2000 + year;
@@ -47,13 +56,25 @@ const parseMMDDYYToDate = (dateStr: string): Date => {
     }
   }
 
-  return new Date(fullYear, month - 1, day, hours, minutes);
+  const parsedDate = new Date(fullYear, month - 1, day, hours, minutes);
+  console.log("🟢 Parsed as MM/DD/YY:", parsedDate.toString());
+
+  return parsedDate;
 };
 
-const isSameDay = (d1: Date, d2: Date) =>
-  d1.getFullYear() === d2.getFullYear() &&
-  d1.getMonth() === d2.getMonth() &&
-  d1.getDate() === d2.getDate();
+const isSameDay = (d1: Date, d2: Date) => {
+  console.log("🔵 Comparing Dates:");
+  console.log("   Appointment Date:", d1.toString());
+  console.log("   Today Date:", d2.toString());
+
+  const result =
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+
+  console.log("   👉 isSameDay result:", result);
+  return result;
+};
 
 /* ---------------- PAGE ---------------- */
 
@@ -73,10 +94,13 @@ const ConsultantDashboard = () => {
           api.get("/appointment/consultant/history"),
         ]);
 
+        console.log("📦 CURRENT APPOINTMENTS RAW:", currentRes.data);
+        console.log("📦 HISTORY APPOINTMENTS RAW:", historyRes.data);
+
         setCurrent(currentRes.data);
         setHistory(historyRes.data);
       } catch (err) {
-        console.error("Failed to load consultant dashboard", err);
+        console.error("❌ Failed to load consultant dashboard", err);
       } finally {
         setLoading(false);
       }
@@ -91,16 +115,28 @@ const ConsultantDashboard = () => {
   const scheduledCount = current.filter((a) => a.status === "SCHEDULED").length;
   const completedCount = history.filter((a) => a.status === "COMPLETED").length;
 
-  /* ---------------- TODAY LOGIC (FIXED) ---------------- */
+  /* ---------------- TODAY LOGIC (FULL DEBUG) ---------------- */
 
-  const today = new Date(); // IST local time
+  const today = new Date();
+  console.log("🕒 TODAY (IST):", today.toString());
 
   const todaysAppointments = current.filter((a) => {
-    if (a.status !== "SCHEDULED") return false;
+    console.log("──────── Checking Appointment ID:", a.id);
+    console.log("Status:", a.status);
+
+    if (a.status !== "SCHEDULED") {
+      console.log("❌ Skipped (not SCHEDULED)");
+      return false;
+    }
 
     const appointmentDate = parseMMDDYYToDate(a.startAt);
-    return isSameDay(appointmentDate, today);
+    const isToday = isSameDay(appointmentDate, today);
+
+    console.log("✅ Final decision (show?):", isToday);
+    return isToday;
   });
+
+  console.log("📌 TODAYS APPOINTMENTS FINAL:", todaysAppointments);
 
   /* ---------------- FORMAT TIME ---------------- */
 
@@ -160,26 +196,6 @@ const ConsultantDashboard = () => {
           <StatCard label="Completed" value={completedCount} />
         </div>
 
-        {/* QUICK ACTIONS */}
-        <section className="bg-white border rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">
-            Quick Actions
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {quickActions.map((card) => (
-              <ActionCard
-                key={card.title}
-                icon={card.icon}
-                title={card.title}
-                description={card.description}
-                onClick={() => navigate(card.navigateTo)}
-                colorClass={actionCardColors[card.title]}
-              />
-            ))}
-          </div>
-        </section>
-
         {/* TODAY APPOINTMENTS */}
         <section className="bg-white border rounded-xl p-6">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">
@@ -197,7 +213,7 @@ const ConsultantDashboard = () => {
               {todaysAppointments.map((appt) => (
                 <div
                   key={appt.id}
-                  className="flex justify-between items-center border rounded-lg px-4 py-3 hover:bg-gray-50 transition"
+                  className="flex justify-between items-center border rounded-lg px-4 py-3"
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">
@@ -229,31 +245,6 @@ const StatCard = ({ label, value }: { label: string; value: number }) => (
   </div>
 );
 
-const ActionCard = ({
-  icon,
-  title,
-  description,
-  onClick,
-  colorClass = "bg-gray-50 text-gray-600",
-}: any) => (
-  <div
-    onClick={onClick}
-    className="cursor-pointer border rounded-lg p-4 hover:border-emerald-500 transition"
-  >
-    <div className="flex items-center gap-3">
-      <div
-        className={`w-10 h-10 flex items-center justify-center rounded-md ${colorClass}`}
-      >
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-900">{title}</p>
-        <p className="text-xs text-gray-500">{description}</p>
-      </div>
-    </div>
-  </div>
-);
-
 const StatusBadge = ({ status }: { status: AppointmentStatus }) => {
   const map: Record<AppointmentStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-700",
@@ -264,9 +255,7 @@ const StatusBadge = ({ status }: { status: AppointmentStatus }) => {
   };
 
   return (
-    <span
-      className={`text-xs font-medium px-2 py-1 rounded-md ${map[status]}`}
-    >
+    <span className={`text-xs font-medium px-2 py-1 rounded-md ${map[status]}`}>
       {status}
     </span>
   );

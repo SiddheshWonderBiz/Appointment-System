@@ -87,6 +87,7 @@ const CreateAppointment = () => {
   /* ================= FILTER LOGIC ================= */
 
   const visibleSlots = slots.filter((slot, index) => {
+    console.log(index);
     // Future dates → show all slots
     if (date !== todayIST) {
       

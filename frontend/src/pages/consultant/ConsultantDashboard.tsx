@@ -16,13 +16,44 @@ type AppointmentStatus =
 
 type Appointment = {
   id: number;
-  startAt: string;
+  startAt: string; // MM/DD/YY HH:mm or MM/DD/YY hh:mm AM/PM
   endAt: string;
   status: AppointmentStatus;
   client: {
     name: string;
   };
 };
+
+/* ---------------- DATE HELPERS (IST SAFE) ---------------- */
+
+/**
+ * Parses MM/DD/YY string into local Date (IST)
+ */
+const parseMMDDYYToDate = (dateStr: string): Date => {
+  const [datePart, timePart, meridian] = dateStr.split(" ");
+
+  const [month, day, year] = datePart.split("/").map(Number);
+  const fullYear = 2000 + year;
+
+  let hours = 0;
+  let minutes = 0;
+
+  if (timePart) {
+    [hours, minutes] = timePart.split(":").map(Number);
+
+    if (meridian) {
+      if (meridian === "PM" && hours < 12) hours += 12;
+      if (meridian === "AM" && hours === 12) hours = 0;
+    }
+  }
+
+  return new Date(fullYear, month - 1, day, hours, minutes);
+};
+
+const isSameDay = (d1: Date, d2: Date) =>
+  d1.getFullYear() === d2.getFullYear() &&
+  d1.getMonth() === d2.getMonth() &&
+  d1.getDate() === d2.getDate();
 
 /* ---------------- PAGE ---------------- */
 
@@ -60,28 +91,33 @@ const ConsultantDashboard = () => {
   const scheduledCount = current.filter((a) => a.status === "SCHEDULED").length;
   const completedCount = history.filter((a) => a.status === "COMPLETED").length;
 
-  /* ---------------- TODAY LOGIC ---------------- */
+  /* ---------------- TODAY LOGIC (FIXED) ---------------- */
 
-  const todayISO = new Date().toISOString().split("T")[0];
+  const today = new Date(); // IST local time
 
-  const todaysAppointments = current.filter(
-    (a) => a.status === "SCHEDULED" && a.startAt.startsWith(todayISO)
-  );
+  const todaysAppointments = current.filter((a) => {
+    if (a.status !== "SCHEDULED") return false;
 
-  
+    const appointmentDate = parseMMDDYYToDate(a.startAt);
+    return isSameDay(appointmentDate, today);
+  });
 
-  const formatTime12 = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+  /* ---------------- FORMAT TIME ---------------- */
 
-  
+  const formatTime12 = (dateStr: string) => {
+    const date = parseMMDDYYToDate(dateStr);
+    return date.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   const actionCardColors: Record<string, string> = {
     "Pending Requests": "bg-yellow-50 text-yellow-600",
     "Scheduled Appointments": "bg-emerald-50 text-emerald-600",
     History: "bg-blue-50 text-blue-600",
   };
-
- 
 
   const quickActions = [
     {
@@ -113,7 +149,7 @@ const ConsultantDashboard = () => {
         <div>
           <h1 className="text-xl text-gray-500">Consultant Dashboard</h1>
           <p className="text-2xl sm:text-3xl font-semibold text-gray-900 font-serif">
-            Welcome back, <span className="text-emerald-600 ">{user?.name}</span>
+            Welcome back, <span className="text-emerald-600">{user?.name}</span>
           </p>
         </div>
 
@@ -126,7 +162,9 @@ const ConsultantDashboard = () => {
 
         {/* QUICK ACTIONS */}
         <section className="bg-white border rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {quickActions.map((card) => (
@@ -144,7 +182,9 @@ const ConsultantDashboard = () => {
 
         {/* TODAY APPOINTMENTS */}
         <section className="bg-white border rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Today’s Appointments</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">
+            Today’s Appointments
+          </h2>
 
           {loading ? (
             <p className="text-sm text-gray-500">Loading...</p>
@@ -160,9 +200,12 @@ const ConsultantDashboard = () => {
                   className="flex justify-between items-center border rounded-lg px-4 py-3 hover:bg-gray-50 transition"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{appt.client.name}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {appt.client.name}
+                    </p>
                     <p className="text-xs text-gray-500">
-                      {formatTime12(appt.startAt)} – {formatTime12(appt.endAt)}
+                      {formatTime12(appt.startAt)} –{" "}
+                      {formatTime12(appt.endAt)}
                     </p>
                   </div>
 
@@ -198,7 +241,9 @@ const ActionCard = ({
     className="cursor-pointer border rounded-lg p-4 hover:border-emerald-500 transition"
   >
     <div className="flex items-center gap-3">
-      <div className={`w-10 h-10 flex items-center justify-center rounded-md ${colorClass}`}>
+      <div
+        className={`w-10 h-10 flex items-center justify-center rounded-md ${colorClass}`}
+      >
         {icon}
       </div>
       <div>
@@ -218,7 +263,13 @@ const StatusBadge = ({ status }: { status: AppointmentStatus }) => {
     REJECTED: "bg-red-100 text-red-700",
   };
 
-  return <span className={`text-xs font-medium px-2 py-1 rounded-md ${map[status]}`}>{status}</span>;
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-1 rounded-md ${map[status]}`}
+    >
+      {status}
+    </span>
+  );
 };
 
 export default ConsultantDashboard;

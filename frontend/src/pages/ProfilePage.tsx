@@ -3,9 +3,9 @@ import { useAuth } from "../context/AuthContext";
 const ProfilePage = () => {
   const { user } = useAuth();
 
-  const avatarUrl = `https://avatars.dicebear.com/api/initials/${encodeURIComponent(
-    user?.name || "U",
-  )}.svg`;
+  const avatarUrl = `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(
+    user?.name || "user"
+  )}`;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">

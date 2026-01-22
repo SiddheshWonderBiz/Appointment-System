@@ -9,9 +9,9 @@ const Header = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   // Generate a random avatar if user.avatar not available
-  const avatarUrl = `https://avatars.dicebear.com/api/initials/${encodeURIComponent(
-    user?.name || "U",
-  )}.svg`;
+  const avatarUrl = `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(
+    user?.name || "user"
+  )}`;
 
   return (
     <header className="bg-gradient-to-r from-[#0f172a] via-[#0b1220] to-gray-700 px-6 py-4 shadow-md">

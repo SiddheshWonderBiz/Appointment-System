@@ -23,8 +23,8 @@ const ProfilePage = () => {
             <ArrowLeft className="h-4 w-4" />
             <span className="font-body text-sm">Back</span>
           </button>
-          <h1 className="font-display text-3xl font-semibold">My Profile</h1>
-          <p className="font-body text-primary-foreground/70 mt-2">
+          <h1 className="font-display text-3xl text-emerald-500 font-semibold">My Profile</h1>
+          <p className="font-body text-primary-foreground/70 mt-2 text-emerald-300">
             Manage your account information
           </p>
         </div>
@@ -44,7 +44,7 @@ const ProfilePage = () => {
                 />
               </div>
               <div className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-                <User className="h-4 w-4 text-accent-foreground" />
+                <User className="h-4 w-4 text-accent-foreground " />
               </div>
             </div>
             <h2 className="mt-5 font-display text-2xl font-semibold text-foreground">
@@ -65,7 +65,7 @@ const ProfilePage = () => {
             <div className="grid gap-4">
               <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 border border-border">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary" />
+                  <User className="h-5 w-5 text-primary text-emerald-500" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground font-body">Full Name</p>
@@ -75,7 +75,7 @@ const ProfilePage = () => {
 
               <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 border border-border">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-primary" />
+                  <Mail className="h-5 w-5 text-primary text-emerald-500" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground font-body">Email Address</p>
@@ -85,7 +85,7 @@ const ProfilePage = () => {
 
               <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50 border border-border">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-primary" />
+                  <Shield className="h-5 w-5 text-primary text-emerald-500" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground font-body">Account Role</p>

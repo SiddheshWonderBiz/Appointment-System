@@ -1,3 +1,6 @@
+const APP_URL =
+  process.env.FRONTEND_URL || 'https://appointease.vercel.app';
+
 const baseTemplate = (title: string, body: string) => `
 <!DOCTYPE html>
 <html>
@@ -37,6 +40,21 @@ const baseTemplate = (title: string, body: string) => `
     .status {
       font-weight: bold;
     }
+    .btn {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #ffffff;
+      font-weight: bold;
+    }
+    .btn-success {
+      background-color: #10b981;
+    }
+    .btn-primary {
+      background-color: #2563eb;
+    }
   </style>
 </head>
 <body>
@@ -61,15 +79,27 @@ export const appointmentCreatedHtml = (
     'New Appointment Request',
     `
       <p>You have received a new appointment request.</p>
+
       <p>
         <strong>Client:</strong> ${clientName}<br/>
         <strong>Date:</strong> ${date}<br/>
-        <strong>Time:</strong> ${time}
+        <strong>Time:</strong> ${time} (IST)
       </p>
-      <p>Please log in to your dashboard to accept or reject the appointment.</p>
+
+      <a
+        href="${APP_URL}/consultant/appointments/pending"
+        class="btn btn-success"
+      >
+        View Pending Appointments
+      </a>
+
+      <p style="margin-top:12px">
+        If you are not logged in, you will be asked to log in first.
+      </p>
     `,
   ),
 });
+
 export const appointmentStatusHtml = (
   status: 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED',
   otherPartyName: string,
@@ -85,9 +115,21 @@ export const appointmentStatusHtml = (
         <strong>${otherPartyName}</strong> has been 
         <span class="status">${status}</span>.
       </p>
+
       <p>
         <strong>Date:</strong> ${date}<br/>
-        <strong>Time:</strong> ${time}
+        <strong>Time:</strong> ${time} (IST)
+      </p>
+
+      <a
+        href="${APP_URL}/my-appointments"
+        class="btn btn-primary"
+      >
+        View My Appointments
+      </a>
+
+      <p style="margin-top:12px">
+        If you are not logged in, you will be asked to log in first.
       </p>
     `,
   ),

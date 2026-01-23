@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import api from "../api/axios";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
@@ -12,20 +12,24 @@ const Login = () => {
 
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     if (!user) return;
 
-    if (user.role === "CLIENT") navigate("/client");
-    else if (user.role === "CONSULTANT") navigate("/consultant");
-  }, [user, navigate]);
+    const redirectTo =
+      location.state?.from?.pathname ||
+      (user.role === "CLIENT" ? "/client" : "/consultant");
+
+    navigate(redirectTo, { replace: true });
+  }, [user, navigate, location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     try {
-      console.log(api)
+      console.log(api);
       await api.post("/auth/login", { email, password });
       await refreshUser();
     } catch (err: any) {

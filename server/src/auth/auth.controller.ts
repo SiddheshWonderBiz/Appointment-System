@@ -2,7 +2,7 @@ import { Controller, Post, Body, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { max } from 'class-validator';
+import { max, min } from 'class-validator';
 import { CurrentUser } from './decorator/current-user.decorator';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 
@@ -25,7 +25,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite : 'none',
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 15 * 60 * 1000,
     });
 
     return { message: 'Login successful', };

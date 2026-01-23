@@ -13,7 +13,7 @@ export class MailService {
 
     this.emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
-    this.logger.log('Brevo Mail Service initialized ');
+    this.logger.log('Brevo Mail Service initialized');
   }
 
   async sendMail(options: {
@@ -32,10 +32,10 @@ export class MailService {
         htmlContent: options.html,
       });
 
-      this.logger.log(`Email sent to ${options.to} `);
+      this.logger.log(`Email sent to ${options.to}`);
     } catch (error: any) {
       this.logger.error(
-        'Email failed ',
+        'Email failed',
         error?.response?.body || error.message,
       );
     }

@@ -26,14 +26,14 @@ const ProfilePage = () => {
           <h1 className="text-3xl font-semibold text-emerald-400">
             My Profile
           </h1>
-          <p className="mt-2 text-slate-300">
+          <p className="mt-1 text-slate-300">
             Manage your account information
           </p>
         </div>
       </header>
 
       {/* ================= PROFILE CARD ================= */}
-      <main className="max-w-4xl mx-auto px-6 -mt-12">
+      <main className="max-w-4xl mx-auto px-6 -mt-10">
         <div
           className="bg-white rounded-2xl p-8
                      border border-slate-200

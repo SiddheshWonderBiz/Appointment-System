@@ -4,6 +4,8 @@ import Header from "../../common/Header";
 import { useNavigate } from "react-router-dom";
 import AppointmentCard from "../../common/AppointmentCard ";
 
+type AppointmentStatus = "ALL" | "COMPLETED" | "REJECTED" | "CANCELLED";
+
 type Appointment = {
   id: number;
   startAt: string;
@@ -20,6 +22,9 @@ type Appointment = {
 const AppointmentHistory = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] =
+    useState<AppointmentStatus>("ALL");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,6 +34,13 @@ const AppointmentHistory = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const filteredAppointments =
+    statusFilter === "ALL"
+      ? appointments
+      : appointments.filter(
+          (appt) => appt.status === statusFilter
+        );
+
   if (loading) {
     return (
       <div className="flex justify-center py-16 text-gray-500">
@@ -37,11 +49,12 @@ const AppointmentHistory = () => {
     );
   }
 
-    return (
+  return (
     <>
       <Header />
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Header row */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
@@ -55,26 +68,48 @@ const AppointmentHistory = () => {
           </h2>
         </div>
 
-        {appointments.length === 0 ? (
+        {/* ===== STATUS FILTER ===== */}
+        <div className="flex gap-2 flex-wrap">
+          {(["ALL", "COMPLETED", "REJECTED", "CANCELLED"] as AppointmentStatus[]).map(
+            (status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-2 text-sm rounded-full border transition
+                  ${
+                    statusFilter === status
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"
+                  }
+                `}
+              >
+                {status}
+              </button>
+            )
+          )}
+        </div>
+
+        {/* ===== LIST ===== */}
+        {filteredAppointments.length === 0 ? (
           <p className="text-gray-500">
-            No previous appointments found
+            No appointments found for selected status
           </p>
         ) : (
           <div className="space-y-4">
-            {appointments.map((appt) => (
+            {filteredAppointments.map((appt) => (
               <AppointmentCard
                 key={appt.id}
                 appt={{
                   ...appt,
                   consultant: {
                     // AppointmentCard expects consultant,
-                    // but for consultant history we display client
+                    // but here we show client
                     id: appt.client.id,
                     name: appt.client.name,
                     email: appt.client.email,
                   },
                 }}
-                label="Completed"
+                label={appt.status}
                 muted
               />
             ))}

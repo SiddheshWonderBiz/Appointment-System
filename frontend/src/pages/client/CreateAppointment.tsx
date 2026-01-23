@@ -12,24 +12,21 @@ type Consultant = {
 };
 
 type Slot = {
-  start: string; // ISO UTC from backend
+  start: string;
   end: string;
 };
 
 /* ================= TIME HELPERS ================= */
 
-
 const getNowISTTimestamp = () => {
   const now = new Date();
   const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const istOffset = 5.5 * 60 * 60000; // IST = UTC + 5:30
+  const istOffset = 5.5 * 60 * 60000;
   return utcTime + istOffset;
 };
 
-const getSlotStartTimestamp = (iso: string) => {
-  return new Date(iso).getTime();
-};
-
+const getSlotStartTimestamp = (iso: string) =>
+  new Date(iso).getTime();
 
 const formatTimeIST = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", {
@@ -38,7 +35,6 @@ const formatTimeIST = (iso: string) =>
     hour12: true,
     timeZone: "Asia/Kolkata",
   });
-
 
 const todayIST = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kolkata",
@@ -76,7 +72,6 @@ const CreateAppointment = () => {
         params: { date },
       })
       .then((res) => {
-       
         setSlots(res.data);
         setSelectedSlot(null);
       })
@@ -86,18 +81,11 @@ const CreateAppointment = () => {
 
   /* ================= FILTER LOGIC ================= */
 
-  const visibleSlots = slots.filter((slot, index) => {
-    console.log(index);
-    // Future dates → show all slots
-    if (date !== todayIST) {
-      
-      return true;
-    }
+  const visibleSlots = slots.filter((slot) => {
+    if (date !== todayIST) return true;
 
     const nowIST = getNowISTTimestamp();
     const slotStart = getSlotStartTimestamp(slot.start);
-
-    
 
     return slotStart > nowIST;
   });
@@ -132,9 +120,19 @@ const CreateAppointment = () => {
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-semibold mb-6">
-          Create Appointment
-        </h1>
+        {/* ===== HEADER ROW WITH BACK ===== */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm"
+          >
+            ←
+          </button>
+
+          <h1 className="text-2xl font-semibold">
+            Create Appointment
+          </h1>
+        </div>
 
         <div className="bg-white border rounded-xl p-8 space-y-6">
           {/* Consultant */}

@@ -5,6 +5,8 @@ import AppointmentCard from "../../common/AppointmentCard ";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
+/* ================= TYPES ================= */
+
 export type Appointment = {
   id: number;
   startAt: string;
@@ -19,14 +21,21 @@ export type Appointment = {
 };
 
 type Tab = "UPCOMING" | "HISTORY";
+type HistoryStatus = "ALL" | "COMPLETED" | "CANCELLED" | "REJECTED";
+
+/* ================= COMPONENT ================= */
 
 const MyAppointments = () => {
   const [upcoming, setUpcoming] = useState<Appointment[]>([]);
   const [history, setHistory] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("UPCOMING");
+  const [historyStatusFilter, setHistoryStatusFilter] =
+    useState<HistoryStatus>("ALL");
 
   const navigate = useNavigate();
+
+  /* ================= LOAD DATA ================= */
 
   useEffect(() => {
     Promise.all([
@@ -40,18 +49,34 @@ const MyAppointments = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  /* ================= ACTIONS ================= */
+
   const handleCancel = async (appt: Appointment) => {
     try {
       await api.patch(`/appointment/cancel/${appt.id}`);
 
       setUpcoming((prev) => prev.filter((a) => a.id !== appt.id));
-      setHistory((prev) => [{ ...appt, status: "CANCELLED" }, ...prev]);
+      setHistory((prev) => [
+        { ...appt, status: "CANCELLED" },
+        ...prev,
+      ]);
 
       toast.success("Appointment cancelled successfully");
     } catch {
       toast.error("Failed to cancel appointment");
     }
   };
+
+  /* ================= FILTER LOGIC ================= */
+
+  const filteredHistory =
+    historyStatusFilter === "ALL"
+      ? history
+      : history.filter(
+          (appt) => appt.status === historyStatusFilter
+        );
+
+  /* ================= LOADING ================= */
 
   if (loading) {
     return (
@@ -64,6 +89,8 @@ const MyAppointments = () => {
     );
   }
 
+  /* ================= UI ================= */
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -71,16 +98,15 @@ const MyAppointments = () => {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* PAGE HEADER */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center justify-center flex-row gap-6">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-sm px-3 py-2 rounded-md border bg-white hover:bg-gray-100"
+            >
+              ←
+            </button>
+
             <div>
-              <button
-                onClick={() => navigate(-1)}
-                className="text-sm px-3 py-2 rounded-md border bg-white hover:bg-gray-100"
-              >
-                ←
-              </button>
-            </div>
-            <div className="flex items-start justify-center flex-col">
               <h1 className="text-2xl font-semibold text-gray-900">
                 My Appointments
               </h1>
@@ -99,7 +125,7 @@ const MyAppointments = () => {
         </div>
 
         {/* TABS */}
-        <div className="flex gap-6 border-b mb-8">
+        <div className="flex gap-6 border-b mb-6">
           <TabButton
             active={activeTab === "UPCOMING"}
             onClick={() => setActiveTab("UPCOMING")}
@@ -114,6 +140,29 @@ const MyAppointments = () => {
             History ({history.length})
           </TabButton>
         </div>
+
+        {/* HISTORY FILTER */}
+        {activeTab === "HISTORY" && (
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {(["ALL", "COMPLETED", "CANCELLED", "REJECTED"] as HistoryStatus[]).map(
+              (status) => (
+                <button
+                  key={status}
+                  onClick={() => setHistoryStatusFilter(status)}
+                  className={`px-4 py-2 text-sm rounded-full border transition
+                    ${
+                      historyStatusFilter === status
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"
+                    }
+                  `}
+                >
+                  {status}
+                </button>
+              )
+            )}
+          </div>
+        )}
 
         {/* CONTENT */}
         <div className="space-y-4">
@@ -139,14 +188,14 @@ const MyAppointments = () => {
 
           {activeTab === "HISTORY" && (
             <>
-              {history.length === 0 ? (
-                <EmptyState text="No appointment history" />
+              {filteredHistory.length === 0 ? (
+                <EmptyState text="No appointments for selected status" />
               ) : (
-                history.map((appt) => (
+                filteredHistory.map((appt) => (
                   <AppointmentCard
                     key={appt.id}
                     appt={appt}
-                    label="Completed"
+                    label={appt.status}
                     muted
                   />
                 ))
@@ -159,7 +208,7 @@ const MyAppointments = () => {
   );
 };
 
-/* ------------------ SMALL COMPONENTS ------------------ */
+/* ================= SMALL COMPONENTS ================= */
 
 const TabButton = ({
   active,

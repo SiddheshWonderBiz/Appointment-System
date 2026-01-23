@@ -9,7 +9,7 @@ const Header = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   // Generate a random avatar if user.avatar not available
-  const avatarUrl = `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(
+  const avatarUrl = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(
     user?.name || "user"
   )}`;
 

@@ -14,7 +14,7 @@ const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="gradient-corporate text-primary-foreground">
+      <header className="bg-gradient-to-r from-[#0f172a] via-[#0b1220] to-gray-700 px-6 py-4 shadow-md">
         <div className="max-w-4xl mx-auto px-6 py-8">
           <button
             onClick={() => navigate(-1)}

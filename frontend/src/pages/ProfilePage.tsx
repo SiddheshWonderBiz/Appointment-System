@@ -33,7 +33,7 @@ const ProfilePage = () => {
       </header>
 
       {/* ================= PROFILE CARD ================= */}
-      <main className="max-w-4xl mx-auto px-6 mt-10">
+      <main className="max-w-4xl mx-auto px-6 -mt-12">
         <div
           className="bg-white rounded-2xl p-8
                      border border-slate-200

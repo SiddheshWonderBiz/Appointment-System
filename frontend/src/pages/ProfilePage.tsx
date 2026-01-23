@@ -26,9 +26,7 @@ const ProfilePage = () => {
           <h1 className="text-3xl font-semibold text-emerald-400">
             My Profile
           </h1>
-          <p className="mt-1 text-slate-300">
-            Manage your account information
-          </p>
+          
         </div>
       </header>
 

@@ -7,6 +7,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin123
       POSTGRES_DB: appointment_db
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,7 +16,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
+  redis:
+    image: redis:7
+    container_name: appointment_redis
+    ports:
+      - "6379:6379"
   api:
     build: .
     container_name: appointment_api

@@ -11,6 +11,7 @@ import { ConsultantController } from './consultant/consultant.controller';
 import { ConsultantModule } from './consultant/consultant.module';
 import { BullModule } from '@nestjs/bull';
 import { MailModule } from './mail/mail.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { MailModule } from './mail/mail.module';
       },
     }),
     MailModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],

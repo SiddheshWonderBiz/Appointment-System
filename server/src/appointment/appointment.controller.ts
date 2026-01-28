@@ -14,6 +14,7 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorator/current-user.decorator';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { Role } from '@prisma/client';
+import { LockSlotDto } from './dto/lock-slot.dto';
 
 @Controller('appointment')
 export class AppointmentController {
@@ -23,23 +24,25 @@ export class AppointmentController {
   @UseGuards(JwtAuthGuard)
   @Post('create')
   async createAppointment(
-    @CurrentUser() user: { id: number; role: Role , name: string },
+    @CurrentUser() user: { id: number; role: Role; name: string },
     @Body() dto: CreateAppointmentDto,
   ) {
     return this.appointmentService.createAppointment(dto, user);
   }
 
-  //get my appointments
+  //get client appointments
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async myAppointments(@CurrentUser() user: { id: number; role: Role }) {
     return this.appointmentService.myAppointments(user);
   }
 
-  //get my prev appointments
+  //get client prev appointments
   @UseGuards(JwtAuthGuard)
   @Get('me/history')
-  async myPreviousAppointments(@CurrentUser() user: { id: number; role: Role }) {
+  async myPreviousAppointments(
+    @CurrentUser() user: { id: number; role: Role },
+  ) {
     return this.appointmentService.myPrevAppointments(user);
   }
 
@@ -52,7 +55,7 @@ export class AppointmentController {
     return this.appointmentService.consultantAppointments(user);
   }
 
-    @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Get('consultant/history')
   async consultantPrevAppointments(
     @CurrentUser() user: { id: number; role: Role },
@@ -100,13 +103,24 @@ export class AppointmentController {
     return this.appointmentService.completeAppointment(+appointmentId, user);
   }
 
-  //availbility 
+  //availbility
   @UseGuards(JwtAuthGuard)
   @Get('availability/:consultantId/')
   async getAvailability(
     @Param('consultantId') consultantId: string,
+    @CurrentUser() user: { id: number },
     @Query('date') date: string,
   ) {
-    return this.appointmentService.getAvailability(+consultantId, date);
+    return this.appointmentService.getAvailability(+consultantId, date , user);
+  }
+
+  //lock slot
+  @UseGuards(JwtAuthGuard)
+  @Post('lock-slot')
+  async lockSlot(
+    @CurrentUser() user: { id: number; role: Role },
+    @Body() lockSlotDto: LockSlotDto,
+  ) {
+    return this.appointmentService.lockSlot(lockSlotDto, user);
   }
 }

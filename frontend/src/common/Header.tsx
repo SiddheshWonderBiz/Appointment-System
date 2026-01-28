@@ -1,23 +1,36 @@
 import { useAuth } from "../context/AuthContext";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
+  const handleLogoClick = () => {
+    if (!user) {
+      navigate("/");
+      return;
+    }
+
+    const redirectTo =
+      location.state?.from?.pathname ||
+      (user.role === "CLIENT" ? "/client" : "/consultant");
+
+    navigate(redirectTo);
+  };
   // Generate a random avatar if user.avatar not available
   const avatarUrl = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(
-    user?.name || "user"
+    user?.name || "user",
   )}`;
 
   return (
     <header className="bg-gradient-to-r from-[#0f172a] via-[#0b1220] to-gray-700 px-6 py-4 shadow-md">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 hover:cursor-pointer" onClick={handleLogoClick}>
           <img
             src="/favicon.png"
             alt="AppointEase Logo"

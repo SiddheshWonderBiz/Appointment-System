@@ -16,7 +16,7 @@ export class RedisService implements OnModuleDestroy {
 
     // Optional but VERY useful in production
     this.redis.on("connect", () => {
-      console.log("edis connected");
+      console.log("redis connected");
     });
 
     this.redis.on("error", (err) => {
